@@ -1,0 +1,120 @@
+const mioD = "mioDistance";
+const mioV = "mioVelocity";
+const egoV = "egoVelocity";
+const PBA = "PB1decel";
+const PBB= "PB2decel";
+const FB = "FBdecel";
+const FCW="FCWStoppingTime";
+const PBAST="PB1StoppingTime";
+const PBBST="PB2StoppingTime";
+const FBST="FBStoppingTime";
+const coll="collision";
+const escalate="escalate";
+
+
+contract automata AEBLogic_Spec {
+    in int TTC, FCWtime, PB1time, PB2time, FBtime, FBdecel, PB1decel, PB2decel;
+    in bool stop;
+    out int FCWactivate, decel, AEBstatus;
+
+    STANDBY -> STANDBY :: "! escalate" / "AEBstatus=0 && decel == 0 && FCWactivate == 0";
+    STANDBY -> WARN :: "escalate" / "AEBstatus==0 && decel == 0 && FCWactivate==1";
+    WARN -> BREAK :: "\escalate" / "AEBstatus > 0 && decel > 0 && FCWactivate == 1";
+    WARN -> WARN :: "!\escalate" / "AEBstatus > 0 && decel > 0 && FCWactivate == 1";
+    BREAK -> BREAK :: "! stop" / "AEBstatus > 0 && decel > 0 && FCWactivate == 1";
+    BREAK -> STANDBY :: "stop" / "AEBstatus ==0 && decel == 0 && FCWactivate == 1";
+    BREAK -> BREAK ::   "stop" / "AEBstatus ==0 && decel == 0 && FCWactivate == 1";
+}
+
+system AEBLogic {
+    in int TTC, FCWtime, PB1time, PB2time, FBtime, FBdecel, PB1decel, PB2decel;
+    in bool stop;
+    out int FCWactivate, decel, AEBstatus;
+    implemented in "system.c" named "aeblogic";
+
+    use contract AEBLogic_Spec with ;
+
+}
+
+system TTCCalculation {
+    in int mioDistance, mioVelocity;
+    out bool collision;
+    out int TTC;
+
+    implemented in "system.c" named "TTCCalculation";
+}
+
+system StoppingTimeCalculation {
+    in int egoVelocity, PB1decel, PB2decel, FBdecel;
+    out int FCWStoppingTime, PB1StoppingTime, PB2StoppingTime, FBStoppingTime;
+
+    implemented in "system.c" named "StoppingTimeCalculation";
+}
+
+system C1 {
+    constant float "0.1";
+}
+
+system PB1_decel {
+    constant float "PB1_decel";
+}
+
+system PB2_decel {
+    constant float "PB2_decel";
+}
+
+system FB_decel {
+    constant float "FB_decel";
+}
+
+
+system gt {
+    in int a, b;
+    out bool v;
+    display "≤";
+    function "a<=b";
+}
+
+system AEBTop {
+    in int mioDistance, mioVelocity, egoVelocity;
+    out bool collision, egoCarStop;
+    out int FCWactivate, AEBStatus, deceleration;
+
+    sub-systems logic as AEBLogic, ttc as TTCCalculation, stc as StoppingTimeCalculation,
+                gt, C1, PB1_decel, PB2_decel, FB_decel;
+
+    connected logic.FCWactivate to self.FCWactivate,
+              logic.decel to self.deceleration,
+              logic.AEBStatus to self.AEBStatus,
+
+              self.mioDistance to ttc.mioDistance,
+              self.mioVelocity to ttc.mioVelocity,
+
+              ttc.TTC to logic.TTC,
+              ttc.collision to self.collision,
+
+              self.egoVelocity to stc.egoVelocity,
+
+              self.egoVelocity to gt.a,
+              C1.const to gt.b,
+              gt.v to self.egoCarStop,
+              gt.v to logic.stop,
+
+              stc.FCWStoppingTime to  logic.FCWtime,
+              stc.PB1StoppingTime to logic.PB1time,
+              stc.PB2StoppingTime to logic.PB2time,
+              stc.FBStoppingTime to logic.FBtime,
+
+              PB1_decel.const to logic.PB1decel,
+              PB2_decel.const to logic.PB2decel,
+              FB_decel.const to logic.FBdecel,
+              PB1_decel.const to stc.PB1decel,
+              PB2_decel.const to stc.PB2decel,
+              FB_decel.const to stc.FBdecel
+    ;
+}
+
+contract ltl SimpleContract {
+    assume "true";
+    guarantee  "true";
+}

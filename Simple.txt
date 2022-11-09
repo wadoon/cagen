@@ -1,0 +1,28 @@
+contract E {}
+
+contract D {
+    input x : int
+    output y : int
+    "true" ==> "y = x + x"
+}
+
+reactor Doubler  {
+    input x : int
+    output y : int
+    contract D
+    {=
+      y = 2 * x;
+    =}
+}
+
+reactor Mult4 {
+  input x : int
+  output y : int
+
+  state a, b : Doubler
+
+  x -> a.x
+  a.y -> b.x
+  b.y -> y
+
+}
