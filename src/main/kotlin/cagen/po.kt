@@ -1,8 +1,8 @@
 package cagen
 
+import cagen.gen.inState
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.contracts.contract
 import kotlin.io.path.div
 import kotlin.io.path.writeText
 
@@ -11,10 +11,42 @@ abstract class ProofObligation(val name: String) {
     abstract fun createFiles(folder: Path): List<POTask>
 }
 
+class ImplPOInv(val system: System, val contract: UseContract) :
+    ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}") {
+    override fun createFiles(folder: Path): List<POTask> {
+        require(contract.contract is AGContract && !contract.contract.isLtl)
+        val vars = system.signature.all
+        val cfile =
+            """
+                // ProofObligation: $name
+                #include <${system.name}.c>
+                
+                int nondet_int(); 
+                bool nondet_bool();
+
+                int main() {
+                    ${system.name}_state __state; init_${system.name}(&__state);
+                    while(true) {
+                        ${system.signature.inputs.joinToString { (v, t) -> "__state.$v = nondet_${t.name}();" }}
+                        assume(${contract.contract.pre.inState(vars, "state.")});
+                        next_${system.name}(&__state);
+                        assert(${contract.contract.post.inState(vars, "state.")});
+                    }
+                }
+            """.trimIndent()
+        (folder / "po_$name.c").writeText(cfile)
+        return listOf(
+            POTask("${name}_cbmc", "cbmc --unwind 10 po_$name.c"),
+            POTask("${name}_seahorn", "seahorn --unwind 10 po_$name.c"),
+            POTask("${name}_cpachecker", "cpachecker --unwind 10 po_$name.c"),
+        )
+    }
+}
+
 /**
  * Verify the implementation against a contract (inv or contract automata)
  * */
-class ImplPO(val system: System, val contract: UseContract) :
+class ImplPOMonitor(val system: System, val contract: UseContract) :
     ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}") {
     override fun createFiles(folder: Path): List<POTask> {
         val outputFolder = folder / name
@@ -114,7 +146,12 @@ fun createProofObligations(components: List<Component>): List<ProofObligation> {
 
         if (c is System) {
             if (c.code != null)
-                c.contracts.forEach { obligations.add(ImplPO(c, it)) }
+                c.contracts.forEach {
+                    if (it.contract is ContractAutomata)
+                        obligations.add(ImplPOMonitor(c, it))
+                    else
+                        obligations.add(ImplPOInv(c, it))
+                }
             else {
                 c.contracts.forEach {
                     obligations.add(ComposedRefinedPO(c, it))

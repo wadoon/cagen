@@ -28,7 +28,7 @@ object CCodeUtils {
         val code = system.code
 
         val codeContent = """
-            #include "$name.h";
+            #include "$name.h"
 
             void init_$name(${name}_state* state) {
                 // Inputs
@@ -37,7 +37,7 @@ object CCodeUtils {
                 ${signature.outputs.joinToString("\n") { "state->${it.name} = ${initValue(it.type)};" }}
                 // Internals
                 ${signature.plainInternals.joinToString("\n") { "state->${it.name} = ${initValue(it.type)};" }}
-                <signature.instances:{v | init_<v.type.name>(&state-><v.name>);}>
+                ${signature.instances.joinToString("\n") { "init_${it.type.name}(&state->${it.name});" }}
             }
 
             void next_${name}(${name}_state* state) {
@@ -62,7 +62,7 @@ object CCodeUtils {
             #include <stdbool>
             ${
             signature.instances.map { it.type.name }.toSet()
-                .joinToString("\n") { "#include <$it.h>"; }
+                .joinToString("\n") { "#include \"$it.h\"" }
         }
 
             typedef struct ${name}_state {
@@ -94,10 +94,10 @@ object CCodeUtils {
 
     private fun Iterable<Variable>.declvars() = joinToString { "${it.type.name} ${it.name};" }
 
-    private fun Iterable<Variable>.assignStage(): String = joinToString { "stage->${it.name} = ${it.name};" }
+    private fun Iterable<Variable>.assignStage(): String = joinToString { "state->${it.name} = ${it.name};" }
 
     private fun Iterable<Variable>.typesOverwriteWithStage(): String = joinToString {
-        "${it.type.name} ${it.name} = stage->${it.name};"
+        "${it.type.name} ${it.name} = state->${it.name};"
     }
 
     fun writeContractAutomata(contract: ContractAutomata, folder: Path) {
@@ -143,13 +143,15 @@ object CCodeUtils {
                 bool ALL_POST_CONDITION_VIOLATED = true;
                 bool EXISTS_APPLICABLE_CONTRACT = false;
                            
-                ${contract.transitions.joinToString("\n") {
-                    "bool pre_${it.name} = ${it.contract.pre.inState(stateVars)};\n"+
-                            "bool post_${it.name} = ${it.contract.post.inState(stateVars)};\n"+
-                            "ALL_PRE_CONDITIONS_VIOLATED = ALL_PRE_CONDITIONS_VIOLATED & !pre_{it.name};\n"+
-                            "ALL_POST_CONDITIONS_VIOLATED = ALL_POST_CONDITIONS_VIOLATED & !post_{it.name};\n"+
-                            "EXISTS_APPLICABLE_CONTRACT = EXISTS_A_VALID_CONTRACT | (pre_${it.name} & post_${it.name});\n"
-                }}
+                ${
+            contract.transitions.joinToString("\n") {
+                "bool pre_${it.name} = ${it.contract.pre.inState(stateVars)};\n" +
+                        "bool post_${it.name} = ${it.contract.post.inState(stateVars)};\n" +
+                        "ALL_PRE_CONDITIONS_VIOLATED = ALL_PRE_CONDITIONS_VIOLATED & !pre_{it.name};\n" +
+                        "ALL_POST_CONDITIONS_VIOLATED = ALL_POST_CONDITIONS_VIOLATED & !post_{it.name};\n" +
+                        "EXISTS_APPLICABLE_CONTRACT = EXISTS_A_VALID_CONTRACT | (pre_${it.name} & post_${it.name});\n"
+            }
+        }
                 ${contract.transitions.incomingList().joinToString("\n") { it.transitionAssignment() }}
 
                 bool STATE_IN_NEXT = !( ${contract.states.joinToString(" | ") { "next_$it" }} );
@@ -171,10 +173,10 @@ private fun Pair<String, List<CATransition>>.transitionAssignment(): String = bu
     append(";")
 }
 
-private fun String.inState(stateVars: List<Variable>): String {
+internal fun String.inState(stateVars: List<Variable>, prefix: String = "state->"): String {
     var result = this
     stateVars.forEach {
-        result = result.replace("\\b${it.name}\\b".toRegex(), "state->${it.name}")
+        result = result.replace("\\b${it.name}\\b".toRegex(), "$prefix${it.name}")
     }
     return result
 }

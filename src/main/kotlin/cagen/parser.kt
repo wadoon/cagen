@@ -11,21 +11,22 @@ import org.antlr.v4.runtime.dfa.DFA
 import java.io.File
 import java.lang.RuntimeException
 import java.util.*
+import kotlin.collections.ArrayList
 
 
 object ParserFacade {
-    fun lexer(stream: CharStream): SystemDefLexer =
+    private fun lexer(stream: CharStream): SystemDefLexer =
         SystemDefLexer(stream).also { it.addErrorListener(ExceptionalErrorListener()) }
 
-    fun parser(lexer: Lexer) = SystemDefParser(CommonTokenStream(lexer)).also {
+    private fun parser(lexer: Lexer) = SystemDefParser(CommonTokenStream(lexer)).also {
         it.addErrorListener(ExceptionalErrorListener())
     }
 
-    fun interpret(parser: SystemDefParser): List<System> {
+    private fun interpret(parser: SystemDefParser): Pair<ArrayList<System>, ArrayList<Contract>> {
         val ctx = parser.model()
         val t = Translator()
         ctx.accept(t)
-        return t.systems
+        return t.systems to t.contracts
     }
 
     fun loadFile(file: File) = interpret(parser(lexer(CharStreams.fromPath(file.toPath()))))
@@ -92,7 +93,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         val contracts = ctx.use_contracts().flatMap {
             it.use_contract().map { uc ->
                 UseContract(
-                    contracts.find { it.name == uc.Ident().text }
+                    contracts.find { c -> c.name == uc.Ident().text }
                         ?: error("Could not find contract ${uc.Ident().text}"),
                     parseSubst(uc.subst(), signature, self))
             }
@@ -123,9 +124,9 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         ctx: List<ConnectionContext>,
         signature: Signature,
         self: Variable
-    ) = ctx.flatMap {
-        val from = port(it.from, signature, self)
-        it.to.map { from to port(it, signature, self) }
+    ) = ctx.flatMap { cc ->
+        val from = port(cc.from, signature, self)
+        cc.to.map { from to port(it, signature, self) }
     }.toMutableList()
 
     private fun port(ioportContext: SystemDefParser.IoportContext, signature: Signature, self: Variable) =

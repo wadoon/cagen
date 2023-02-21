@@ -31,11 +31,12 @@ class TikzCommand : CliktCommand() {
     val fragment by option().flag()
 
     override fun run() {
-        val comps = ParserFacade.loadFile(inputFile)
-        if(!fragment)
-            Tikz.tikz_standalone(comps)
+        val (sys, contracts) = ParserFacade.loadFile(inputFile)
+        //val comps = ParserFacade.loadFile(inputFile)
+        if (!fragment)
+            Tikz.tikz_standalone(sys + contracts)
         else
-            Tikz.tikz(comps)
+            Tikz.tikz(sys + contracts)
     }
 }
 
@@ -44,11 +45,16 @@ class ExtractCode : CliktCommand() {
     val outputFolder by option("-o", "--output").file().default(File("output"))
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     override fun run() {
-        val comps = ParserFacade.loadFile(inputFile)
+        val (sys, contracts) = ParserFacade.loadFile(inputFile)
         println("Write to $outputFolder")
         outputFolder.mkdirs()
-        comps.filterIsInstance<System>().forEach {
+        sys.forEach {
             CCodeUtils.writeSystemCode(it, outputFolder.toPath())
+        }
+
+        contracts.forEach {
+            if (it is ContractAutomata)
+                CCodeUtils.writeContractAutomata(it, outputFolder.toPath())
         }
     }
 }
@@ -57,8 +63,8 @@ class Verify : CliktCommand() {
     val outputFolder by option("-o", "--output").file().default(File("output"))
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     override fun run() {
-        val comps = ParserFacade.loadFile(inputFile)
-        val pos = createProofObligations(comps)
+        val (sys, _) = ParserFacade.loadFile(inputFile)
+        val pos = createProofObligations(sys)
         println("Proof Obligation found:")
         for (po in pos) {
             println("\t- ${po.name}")
