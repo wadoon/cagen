@@ -1,0 +1,19 @@
+contract Bigger {
+    input x : int
+    output y : int
+    "true" ==> "x <= y"
+}
+
+
+
+reactor Counter  {
+    input tick : boolean
+    output val : int
+
+    state down : bool
+
+    contract D
+    {=
+
+    =}
+}

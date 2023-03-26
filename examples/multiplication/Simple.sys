@@ -31,5 +31,4 @@ reactor Mult4 {
   x -> a.x
   a.y -> b.x
   b.y -> y
-
 }
