@@ -5,20 +5,22 @@ grammar SystemDef;
 model: include* (contract|system)* EOF;
 include: 'include' STRING;
 
-contract: automata|invariant;
+contract: automata | invariant;
 
-automata: CONTRACT name=Ident (COLON inherit=use_contract)? LBRACE
+automata: CONTRACT name=Ident LBRACE
     io*
     prepost*
     transition*
+    use_contracts*
     RBRACE;
 
 prepost: CONTRACT name=Ident ':=' pre=STRING '==>' post=STRING;
 transition: from=Ident ARROW to=Ident '::' (contr=Ident| pre=STRING '==>' post=STRING);
 
-invariant: CONTRACT name=Ident (COLON inherit=use_contract)? LBRACE
+invariant: CONTRACT name=Ident LBRACE
   io*
   pre=STRING '==>' post=STRING
+  use_contracts*
  RBRACE;
 
 system: REACTOR Ident LBRACE
@@ -40,7 +42,7 @@ use_contract: Ident ('[' (subst (COMMA subst)*)? ']')?;
 subst: local=Ident BARROW from=ioport;
 
 io: type=(INPUT|OUTPUT|STATE) variable (COMMA variable)*;
-variable: n+=Ident (COMMA n+=Ident)* COLON t=Ident;
+variable: n+=Ident (COMMA n+=Ident)* COLON t=Ident (':=' init=STRING)?;
 reaction: CODE;
 
 

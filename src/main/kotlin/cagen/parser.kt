@@ -4,14 +4,15 @@ import cagen.parser.SystemDefBaseVisitor
 import cagen.parser.SystemDefLexer
 import cagen.parser.SystemDefParser
 import cagen.parser.SystemDefParser.ConnectionContext
-import cagen.parser.SystemDefParser.Use_contractContext
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
 import java.io.File
-import java.lang.RuntimeException
 import java.util.*
-import kotlin.collections.ArrayList
+
+
+private val ParserRuleContext.position: String
+    get() = "${this.start.tokenSource.sourceName}:${this.start.line}@${this.start.charPositionInLine}"
 
 
 object ParserFacade {
@@ -86,8 +87,9 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         ctx.system().forEach { it.accept(this) }
     }
 
+    private val self = Variable("self", BuiltInType("self"), "")
+
     override fun visitSystem(ctx: SystemDefParser.SystemContext) {
-        val self = Variable("self", BuiltInType("self"))
         val signature = parseIo(ctx.io())
         val connections = parseConnections(ctx.connection(), signature, self)
         val contracts = ctx.use_contracts().flatMap {
@@ -153,8 +155,9 @@ class Translator : SystemDefBaseVisitor<Unit>() {
                 val type =
                     if (typename in KNOWN_BUILT_IN_TYPES) BuiltInType(typename)
                     else SystemType(systems.find { it.name == typename }
-                        ?: error("Could not find a system with $typename"))
-                for (token in varctx.n) list.add(Variable(token.text, type))
+                        ?: error("Could not find a system with $typename ${varctx.position}"))
+                val init = varctx.init?.text ?: "0"
+                for (token in varctx.n) list.add(Variable(token.text, type, init))
             }
         }
         return sig
@@ -165,18 +168,20 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             AGContract(
                 ctx.name.text,
                 parseIo(ctx.io()), ctx.pre.text.trim('"'), ctx.post.text.trim('"')
-            ).setParent(ctx.inherit)
+            ).setParent(ctx.use_contracts())
         )
     }
 
-    private fun Contract.setParent(inherit: Use_contractContext?): Contract {
-        if (inherit != null) {
-            val name = inherit.Ident().text
-            val self = Variable("self", BuiltInType("self"))
-            val contract =  contracts.find { it.name == name } ?: error("Parent $name contract not found")
-            val subst = parseSubst(inherit.subst(), signature, self)
-            parent = UseContract(contract, subst)
+    private fun Contract.setParent(inherit: MutableList<SystemDefParser.Use_contractsContext>): Contract {
+        val contracts = inherit.flatMap { seq ->
+            seq.use_contract().map { uc ->
+                UseContract(
+                    contracts.find { c -> c.name == uc.Ident().text }
+                        ?: error("Could not find contract ${uc.Ident().text}"),
+                    parseSubst(uc.subst(), signature, self))
+            }
         }
+        parent.addAll(contracts)
         return this
     }
 
@@ -195,7 +200,8 @@ class Translator : SystemDefBaseVisitor<Unit>() {
 
         contracts.add(
             ContractAutomata(ctx.name.text, parseIo(ctx.io()), transitions)
-                .setParent(ctx.inherit))
+                .setParent(ctx.use_contracts())
+        )
     }
 }
 

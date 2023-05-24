@@ -63,8 +63,8 @@ class Verify : CliktCommand() {
     val outputFolder by option("-o", "--output").file().default(File("output"))
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     override fun run() {
-        val (sys, _) = ParserFacade.loadFile(inputFile)
-        val pos = createProofObligations(sys)
+        val (sys, contract) = ParserFacade.loadFile(inputFile)
+        val pos = createProofObligations(sys + contract)
         println("Proof Obligation found:")
         for (po in pos) {
             println("\t- ${po.name}")

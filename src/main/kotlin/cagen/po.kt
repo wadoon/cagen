@@ -98,7 +98,7 @@ class ComposedValidPO(val system: System) : ProofObligation("PO_${system.name}_c
 class ComposedRefinedPO(val system: System, val contract: UseContract) :
     ProofObligation("PO_${system.name}_composition_refine") {
     override fun createFiles(folder: Path): List<POTask> {
-        val filename = folder / "$name}.smv"
+        val filename = folder / "$name.smv"
         val subContracts = system.signature.instances.map {
             (it.type as SystemType).system.contracts.first()
         }
@@ -117,7 +117,7 @@ class ContractRefinementPO(val contract: Contract, val refined: UseContract) :
     override fun createFiles(folder: Path): List<POTask> {
         val sub = contract.signature.all
         for (variable in refined.contract.signature.all) {
-            if (variable !in sub || variable.name notin refined.variableMap) {
+            if (variable !in sub && variable.name notin refined.variableMap) {
                 error("Variable ${variable.name} defined in parent contract '${refined.contract.name}' is not defined in child contract '${contract.name}'")
             }
         }
@@ -141,8 +141,11 @@ private fun Contract.toSmv() = when (this) {
 fun createProofObligations(components: List<Component>): List<ProofObligation> {
     val obligations = mutableListOf<ProofObligation>()
     for (c in components) {
-        if (c is Contract && c.parent != null)
-            obligations.add(ContractRefinementPO(c, c.parent!!))
+        if (c is Contract) {
+            c.parent.forEach {
+                obligations.add(ContractRefinementPO(c, it))
+            }
+        }
 
         if (c is System) {
             if (c.code != null)

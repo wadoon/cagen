@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 val KNOWN_BUILT_IN_TYPES = setOf(
     "int", "int8", "int16", "int32", "int64",
     "uint", "uint8", "uint16", "uint32", "uint64",
-    "float", "double", "short", "long",
+    "float", "double", "short", "long", "bool",
 )
 
 sealed interface Component {
@@ -25,7 +25,7 @@ data class SystemType(val system: System) : Type {
         get() = system.name
 }
 
-data class Variable(val name: String, val type: Type)
+data class Variable(val name: String, val type: Type, val initValue: String)
 
 data class Signature(
     val inputs: MutableList<Variable> = arrayListOf(),
@@ -56,14 +56,14 @@ data class System(
 data class UseContract(val contract: Contract, val variableMap: MutableList<Pair<String, IOPort>>)
 
 sealed interface Contract : Component {
-    var parent: UseContract?
+    val parent: MutableList<UseContract>
 }
 
 data class AGContract(
     override val name: String, override val signature: Signature,
     val pre: String, val post: String, val isLtl: Boolean = false
 ) : Contract {
-    override var parent: UseContract? = null
+    override var parent: MutableList<UseContract> = arrayListOf()
 }
 
 data class ContractAutomata(
@@ -72,7 +72,7 @@ data class ContractAutomata(
     val transitions: List<CATransition>
 ) :
     Contract {
-    override var parent: UseContract? = null
+    override var parent: MutableList<UseContract> = arrayListOf()
     val contracts
         get() = transitions.map { it.contract }.toSet()
     val states
@@ -100,7 +100,7 @@ private fun toporder(
 
     val remPorts = ports.filter { it.second.variable in remaining && it.first.variable in remaining }
 
-    // find variable which do not have an incoming edge (ignoring self edges)
+    // find variable which does not have an incoming edge (ignoring self edges)
     val front = remaining.filter { v ->
         remPorts.all { (_, to) -> to.variable != v }
     }

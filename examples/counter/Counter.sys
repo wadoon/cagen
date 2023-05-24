@@ -1,19 +1,40 @@
-contract Bigger {
-    input x : int
+contract Interval {
     output y : int
-    "true" ==> "x <= y"
+    "true" ==> "-128 <= y && y <= 128"
+}
+
+contract UpDown {
+    input  tick : bool
+    output cnt : int
+    state  down : bool
+
+    UP -> UP :: " tick" ==> " \prev(tick) < cnt & cnt < 128"
+    UP -> UP :: "! tick" ==> " \prev(tick) = cnt"
+
+    DOWN -> DOWN :: " tick" ==> " \prev(tick) > cnt & cnt > -128"
+    DOWN -> DOWN :: "! tick" ==> " \prev(tick) = cnt"
+
+    UP -> DOWN :: "tick" ==> "cnt=128"
+    DOWN -> UP :: "tick" ==> "cnt=-128"
+
+    contract Interval[y <- cnt]
 }
 
 
-
 reactor Counter  {
-    input tick : boolean
+    input  tick : bool
     output val : int
+    state  down : bool
 
-    state down : bool
+    contract UpDown
 
-    contract D
     {=
+        if(!down) {
+            val += 1;
+        } else {
+            val -= 1;
+        }
 
+        if(val == 127 || val == -127) down = !down;
     =}
 }

@@ -1,5 +1,29 @@
 package cagen
 
+private val Type.asSmvType: String
+    get() = when (this) {
+        is BuiltInType ->
+            when (this.name) {
+                "int", "int32" -> "signed word[32]"
+                "int8" -> "signed word[32]"
+                "short", "int16" -> "signed word[32]"
+                "long", "int64" -> "signed word[32]"
+
+                "uint", "uint32" -> "unsigned word[32]"
+                "uint8" -> "unsigned word[32]"
+                "uint16" -> "unsigned word[32]"
+                "uint64" -> "unsigned word[32]"
+
+                "float" -> "real"
+                "double" -> "real"
+                "bool" -> "boolean"
+                else -> error("unexpected type")
+            }
+
+        else -> error("unexpected type")
+    }
+
+
 object SmvUtils {
     fun toSmv(contract: ContractAutomata): String {
         val name: String = contract.name
@@ -72,7 +96,7 @@ object SmvUtils {
     fun moduleHead(name: String, signature: Signature) = """
         MODULE ${name}}(
         -- INPUTS
-        ${signature.inputs.joinToString(", ") { it.name }}
+        ${signature.inputs.joinToString(", ", postfix = ",") { it.name }}
         -- OUTPUTS
         ${signature.outputs.joinToString(", ") { it.name }}
         )
@@ -92,7 +116,7 @@ object SmvUtils {
 
         val inputs = (contract.signature.inputs + refined.contract.signature.inputs
                 + contract.signature.outputs + refined.contract.signature.outputs)
-            .map { it.name to it.type }
+            .map { it.name to it.type.asSmvType }
             .toMap().toList().joinToString("\n") { "${it.first} : ${it.second};" }
 
         return """
@@ -103,7 +127,7 @@ object SmvUtils {
                 
          VAR
           parent : ${refined.contract.name}(
-                ${contract.signature.inputs.joinToString(", ") { applySubst(it) }},
+                ${contract.signature.inputs.joinToString(", ", postfix = ",") { applySubst(it) }}
                 ${contract.signature.outputs.joinToString(", ") { applySubst(it) }}
           );
           
