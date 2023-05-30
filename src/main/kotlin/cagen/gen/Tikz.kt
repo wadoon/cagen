@@ -66,8 +66,7 @@ object Tikz {
     fun Component.print_tikz(instance: String = "") =
         when (this) {
             is System -> this.print_tikz(instance)
-            is ContractAutomata -> this.print_tikz(instance)
-            is AGContract -> this.print_tikz(instance)
+            is Contract -> this.print_tikz(instance)
         }
     //__print_tikz_node(instance, "$instance:$name", "component")
     //__structured_label(instance, signature)
@@ -80,7 +79,7 @@ object Tikz {
         }
     }
 
-    fun ContractAutomata.print_tikz(instance: String) {
+    fun Contract.print_tikz(instance: String) {
         var label = "\\begin{tikzpicture}"
         val label_state = hashMapOf<String, MutableList<String>>()
         val edge_num = hashMapOf<CATransition, Int>()
@@ -141,8 +140,8 @@ println(f"\\draw[->,contract] {instance} -- {obj.use_contract.contract.name};")
         __structured_label(instance, self.signature)
     }
 
-    fun AGContract.print_tikz(instance: String = "") {
+    /*fun AGContract.print_tikz(instance: String = "") {
         val inst = if (instance == "") name else instance
         println("$inst [ lbl=\"{{$name|$pre|$post}}\", $LTL_NODE]")
-    }
+    }*/
 }

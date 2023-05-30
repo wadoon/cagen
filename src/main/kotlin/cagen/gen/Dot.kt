@@ -28,7 +28,7 @@ object Dot {
         )
     }
 
-    fun ContractAutomata.print_dot(instance: String) {
+    fun Contract.print_dot(instance: String) {
         print("subgraph cluster_$instance  { bgcolor=\"#cccccc\" \nlabel=\"$instance : ${name}\" \n")
         print("subgraph automaton  { rankDir=lr label=\"\" compound=True ")
         val count_state = mutableMapOf<String, Int>()
@@ -113,8 +113,8 @@ fun edgeNode(a: Instance, port: String) {
 }
 */
 
-    fun AGContract.print_dot(instance: String = "") {
+    /*fun AGContract.print_dot(instance: String = "") {
         val inst = if (instance == "") name else instance
         print("$inst [ label=\"{{$name|$pre|$post}}\", $LTL_NODE]")
-    }
+    }*/
 }

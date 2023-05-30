@@ -1,6 +1,6 @@
 package cagen
 
-private val Type.asSmvType: String
+val Type.asSmvType: String
     get() = when (this) {
         is BuiltInType ->
             when (this.name) {
@@ -25,29 +25,24 @@ private val Type.asSmvType: String
 
 
 object SmvUtils {
-    fun toSmv(contract: ContractAutomata): String {
+    fun toSmv(contract: Contract): String {
         val name: String = contract.name
         val signature = contract.signature
         val states = contract.states
 
         val content = """
-    MODULE $name (
-    -- INPUTS
-    ${signature.inputs.joinToString(", ") { it.name }},
-    -- OUTPUTS
-    ${signature.outputs.joinToString(", ") { it.name }}
-    )
-
+    ${moduleHead(name, signature)}
     VAR
     ${states.joinToString("\n") { "$it:boolean;" }}
     _error_:boolean;
     _final_:boolean;
-    _assum_:boolean;
+    _assume_:boolean;
 
+    ${handleHistory(contract)}
 
-    DEFINES       
+    DEFINE
     -- at least we have one follow-up state 
-    STATE_IN_NEXT = !( ${states.joinToString(" | ") { "next_$it" }} );
+    STATE_IN_NEXT := ( ${states.joinToString(" | ") { "next($it)" }} );
     ${
             contract.contracts.joinToString("\n") {
                 "pre_${it.name} := ${it.pre};\n" +
@@ -56,37 +51,52 @@ object SmvUtils {
             }
         }
     ${contract.transitions.joinToString("\n") { "${it.name} := ${it.from} & ${it.contract.name};" }}
-    VALID_PRE_COND := ${contract.contracts.joinToString(" | ") { "pre_${it.name}" }};
-    VALID_POST_COND := ${contract.contracts.joinToString(" | ") { "post_${it.name}" }};
+    VALID_PRE_COND := ${contract.transitions.joinToString(" | ") { "(${it.from} & pre_${it.contract.name})" }};
+    VALID_POST_COND := ${contract.transitions.joinToString(" | ") { "(${it.from} & post_${it.contract.name})" }};
     
-    ASSUMPTION := VALID_PRE_COND;
-    GUARANTEE := VALID_POST_COND;
+    ASSUMPTION := !next(_assume_);
+    GUARANTEE := !next(_error_);
     
     ASSIGN
 
-    ${states.joinToString("\n") { "init($it) := ${it.startsWith("init")};" }}
+    ${states.joinToString("\n") { "init($it) := ${if (it.first().isLowerCase()) "TRUE" else "FALSE"};" }}
     ${
             contract.transitions.groupBy { it.to }.toList().joinToString("\n") { (s, inc) ->
                 "next($s) := ${inc.joinToString(" | ") { it.name }};"
             }
         }
             
-    init(_error_) : = false;
-    next(_error_) : = ! STATE_IN_NEXT -- not activate state 
-                      & VALID_PRE_COND; --and the reason is a post-condition violation (there exists a valid pre-condition)
+    init(_error_) := FALSE;
+    next(_error_) := ! STATE_IN_NEXT    -- not activate state 
+                      & VALID_PRE_COND; -- and the reason is a post-condition violation (there exists a valid pre-condition)
 
-    init(_final_) := false;
-    next(_final_) := false;
+    init(_final_) := FALSE;
+    next(_final_) := FALSE;
 
-    init(_assume_) := false;
+    init(_assume_) := FALSE;
     next(_assume_) := ! STATE_IN_NEXT  & ! VALID_PRE_COND; -- and the reason is all pre-condition will be violated
-    """
+    """.trimIndent()
         return content
     }
 
+    private fun handleHistory(contract: Contract): String =
+        contract.history.joinToString("\n") { history ->
+            val (name, depth) = history
+            val type = contract.signature.get(name)!!.type.name
+            val defines = (0..depth).joinToString("\n") {
+                "h_${name}_${it} := h_${name}._${it};"
+            }
+            """
+            VAR h_${name} : History_${type}_$depth($name);
+            DEFINE
+            $defines
+            """.trimIndent()
+        }
+
+
     fun inv_module(name: String, signature: Signature, pre: String, post: String) = """
     ${moduleHead(name, signature)}
-    DEFINES 
+    DEFINE
         ASSUMPTION := $pre;
         GUARANTEE := $post;
     
@@ -94,9 +104,9 @@ object SmvUtils {
     """.trimIndent()
 
     fun moduleHead(name: String, signature: Signature) = """
-        MODULE ${name}}(
+        MODULE ${name}(
         -- INPUTS
-        ${signature.inputs.joinToString(", ", postfix = ",") { it.name }}
+        ${signature.inputs.joinToString(", ") { it.name }.comma()}
         -- OUTPUTS
         ${signature.outputs.joinToString(", ") { it.name }}
         )
@@ -104,41 +114,52 @@ object SmvUtils {
 
     fun ltl_module(name: String, signature: Signature, pre: String, post: String) = """
         ${moduleHead(name, signature)}
-        DEFINES
+        DEFINE
             ASSUMPTION := $pre;
             GUARANTEE := $post;
         
         LTLSPEC ASSUMPTION -> GUARANTEE;"""
 
     fun refinement(contract: Contract, refined: UseContract): String {
-        fun applySubst(v: Variable): String =
-            refined.variableMap.find { it.first == v.name }?.second?.portName ?: v.name
+        fun applySubst(v: Variable): String {
+            val ioPort = refined.variableMap.find {
+                it.first == v.name
+            }
+            return if (ioPort != null)
+                "sub__${ioPort.second.portName}"
+            else
+                "parent__${v.name}"
+        }
 
-        val inputs = (contract.signature.inputs + refined.contract.signature.inputs
-                + contract.signature.outputs + refined.contract.signature.outputs)
-            .map { it.name to it.type.asSmvType }
-            .toMap().toList().joinToString("\n") { "${it.first} : ${it.second};" }
+        val bot = (contract.signature.inputs + contract.signature.outputs)
+            .map { it.copy(name = "sub__" + it.name) }
+
+        val top = (refined.contract.signature.inputs + refined.contract.signature.outputs)
+            .map { it.copy(name = "parent__" + it.name) }
+
+        val inputs = (bot + top)
+            .associate { it.name to it.type.asSmvType }
+            .toList()
+            .joinToString("\n") { "    ${it.first} : ${it.second};" }
 
         return """
-        MODULE main 
-        IVAR 
-          ${inputs}
-             
-                
-         VAR
-          parent : ${refined.contract.name}(
-                ${contract.signature.inputs.joinToString(", ", postfix = ",") { applySubst(it) }}
-                ${contract.signature.outputs.joinToString(", ") { applySubst(it) }}
-          );
-          
-          sub : ${contract.name}(
-            ${contract.signature.inputs.joinToString(", ") { applySubst(it) }},
-            ${contract.signature.outputs.joinToString(", ") { applySubst(it) }}
-          );
-         
-         INVARSPEC parent.ASSUMPTION -> sub.ASSUMPTION;
-         INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
-    """.trimIndent()
-    }
+MODULE main 
+IVAR 
+${inputs}
 
+VAR
+  parent : ${refined.contract.name}(
+        ${refined.contract.signature.inputs.joinToString(", ") { applySubst(it) }.comma()}
+        ${refined.contract.signature.outputs.joinToString(", ") { applySubst(it) }} );
+  
+  sub : ${contract.name}(
+    ${contract.signature.inputs.joinToString(", ") { "sub__" + it.name }.comma()}
+    ${contract.signature.outputs.joinToString(", ") { "sub__" + it.name }} );
+ 
+INVARSPEC parent.ASSUMPTION -> sub.ASSUMPTION;
+INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
+""".trimIndent()
+    }
 }
+
+private fun String.comma(): String = if (isBlank()) this else "$this,"

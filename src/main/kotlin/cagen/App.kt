@@ -53,8 +53,7 @@ class ExtractCode : CliktCommand() {
         }
 
         contracts.forEach {
-            if (it is ContractAutomata)
-                CCodeUtils.writeContractAutomata(it, outputFolder.toPath())
+            CCodeUtils.writeContractAutomata(it, outputFolder.toPath())
         }
     }
 }

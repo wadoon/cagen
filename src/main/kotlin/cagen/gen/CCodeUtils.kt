@@ -5,6 +5,9 @@ import java.nio.file.Path
 import kotlin.io.path.div
 import kotlin.io.path.writeText
 
+val Variable.isSelf: Boolean
+    get() = name == "self"
+
 object CCodeUtils {
     fun writeSystemCode(system: System, folder: Path) {
         writeHeaderFile(system, folder)
@@ -48,6 +51,8 @@ object CCodeUtils {
                 system.toporder
             }
         }
+            }
+        
         """.trimIndent()
         val codeFilename = folder / "${system.name}.c"
         codeFilename.writeText(codeContent)
@@ -59,7 +64,7 @@ object CCodeUtils {
         val name = system.name
         val headerContent = """
             #pragma once
-            #include <stdbool>
+            #include <stdbool.h>
             ${
             signature.instances.map { it.type.name }.toSet()
                 .joinToString("\n") { "#include \"$it.h\"" }
@@ -83,34 +88,35 @@ object CCodeUtils {
     private fun writeHeader(folder: Path, name: String, headerContent: String) {
         val headerFilename = folder / "${name}.h"
         headerFilename.writeText(headerContent)
-        println("Write header of ${name} to $headerFilename")
+        println("Write header of $name to $headerFilename")
     }
 
     private fun writeCode(folder: Path, name: String, code: String) {
         val headerFilename = folder / "${name}.c"
         headerFilename.writeText(code)
-        println("Write code of ${name} to $headerFilename")
+        println("Write code of $name to $headerFilename")
     }
 
-    private fun Iterable<Variable>.declvars() = joinToString { "${it.type.name} ${it.name};" }
+    private fun Iterable<Variable>.declvars() = joinToString("\n") { "${it.type.name} ${it.name};" }
 
-    private fun Iterable<Variable>.assignStage(): String = joinToString { "state->${it.name} = ${it.name};" }
+    private fun Iterable<Variable>.assignStage(): String = joinToString("\n") { "state->${it.name} = ${it.name};" }
 
-    private fun Iterable<Variable>.typesOverwriteWithStage(): String = joinToString {
+    private fun Iterable<Variable>.typesOverwriteWithStage(): String = joinToString("\n") {
         "${it.type.name} ${it.name} = state->${it.name};"
     }
 
-    fun writeContractAutomata(contract: ContractAutomata, folder: Path) {
+    fun writeContractAutomata(contract: Contract, folder: Path) {
         writeHeaderFile(contract, folder)
         writeCodeFile(contract, folder)
     }
 
-    fun writeHeaderFile(contract: ContractAutomata, folder: Path) {
+    fun writeHeaderFile(contract: Contract, folder: Path) {
         val signature = contract.signature
         val name = contract.name
         val content = """
             #pragma once
-            #include <stdbool>
+            
+            #include <stdbool.h>
 
             typedef struct ${contract.name}_state {
               ${signature.inputs.declvars()}
@@ -119,6 +125,15 @@ object CCodeUtils {
               
               bool ${contract.states.joinToString(", ")};
               bool _error_, _final_, _assume_;
+              
+                 ${
+            contract.history.joinToString("\n") { (n, d) ->
+                val t = contract.signature.get(n)?.type?.toC()
+                (0..d).joinToString("\n") { "$t h_${n}_$it;" }
+            }
+        }        
+              
+              
             } ${contract.name}_state;
 
             void init_${name}(${name}_state* state);
@@ -127,10 +142,19 @@ object CCodeUtils {
         writeHeader(folder, contract.name, content)
     }
 
-    fun writeCodeFile(contract: ContractAutomata, folder: Path) {
+    fun writeCodeFile(contract: Contract, folder: Path) {
         val name = contract.name
         val stateVars = contract.signature.inputs + contract.signature.outputs
+        val history =
+            contract.history.joinToString("\n") { (n, d) ->
+                val t = contract.signature.get(n)?.type?.toC()
+                (d downTo 1).joinToString("\n") { "state->h_${n}_$it = state->h_${n}_${it - 1}; $t h_${n}_$it =state->h_${n}_$it;" } +
+                        "state->h_${n}_0 = state->$n;" + "$t h_${n}_0 = state->$n;"
+            }
+
         val content = """
+            #include "${name}.h"
+            
             void init_${name}(${name}_state* state) {
                 ${contract.states.joinToString("\n") { "state->$it = ${!it.startsWith("init")};" }}
                 state->_error_= false;
@@ -138,35 +162,85 @@ object CCodeUtils {
                 state->_assume_= false;
             };
 
-            void ${name}_next(${name}_state *state) {
+            void next_${name}(${name}_state *state) {
                 bool ALL_PRE_CONDITIONS_VIOLATED = true;
-                bool ALL_POST_CONDITION_VIOLATED = true;
+                bool ALL_POST_CONDITIONS_VIOLATED = true;
                 bool EXISTS_APPLICABLE_CONTRACT = false;
+            
+                $history
                            
                 ${
             contract.transitions.joinToString("\n") {
                 "bool pre_${it.name} = ${it.contract.pre.inState(stateVars)};\n" +
                         "bool post_${it.name} = ${it.contract.post.inState(stateVars)};\n" +
-                        "ALL_PRE_CONDITIONS_VIOLATED = ALL_PRE_CONDITIONS_VIOLATED & !pre_{it.name};\n" +
-                        "ALL_POST_CONDITIONS_VIOLATED = ALL_POST_CONDITIONS_VIOLATED & !post_{it.name};\n" +
-                        "EXISTS_APPLICABLE_CONTRACT = EXISTS_A_VALID_CONTRACT | (pre_${it.name} & post_${it.name});\n"
+                        "ALL_PRE_CONDITIONS_VIOLATED = ALL_PRE_CONDITIONS_VIOLATED & !pre_${it.name};\n" +
+                        "ALL_POST_CONDITIONS_VIOLATED = ALL_POST_CONDITIONS_VIOLATED & !post_${it.name};\n" +
+                        "EXISTS_APPLICABLE_CONTRACT = EXISTS_APPLICABLE_CONTRACT | (pre_${it.name} & post_${it.name});\n"
             }
         }
                 ${contract.transitions.incomingList().joinToString("\n") { it.transitionAssignment() }}
 
-                bool STATE_IN_NEXT = !( ${contract.states.joinToString(" | ") { "next_$it" }} );
+                bool STATE_IN_NEXT = !( ${contract.states.joinToString(" | ") { "state->$it" }} );
                 state->_error_ = !STATE_IN_NEXT && !ALL_PRE_CONDITIONS_VIOLATED;        
                 state->_final_ = false; //        
                 state->_assume_ = !STATE_IN_NEXT && ALL_PRE_CONDITIONS_VIOLATED;
-                ${contract.states.joinToString("\n") { s -> "state->$s=next_$s;" }}
+                
+                }
     """.trimIndent()
+        //${contract.states.joinToString("\n") { s -> "state->$s=next_$s;" }}
         writeCode(folder, contract.name, content)
+    }
+
+    fun writeGlueCode(system: System, contract: UseContract, outputFile: Path) {
+        val cfile =
+            """ 
+                #include <stdbool.h>
+                #include <assert.h>
+                #include "${contract.contract.name}.c"
+                #include "${system.name}.c"
+
+                #ifdef __CPROVER__
+                int nondet_int(); 
+                bool nondet_bool();
+                #else 
+                int nondet_int() { int i; return i;}
+                bool nondet_bool() { bool b; return b;}
+                #endif
+
+                int main() {
+                    ${system.name}_state __state; 
+                    init_${system.name}(&__state);
+                    
+                    ${contract.contract.name}_state __cstate; 
+                    init_${contract.contract.name}(&__cstate);
+                    
+                    while(true) {
+                        ${system.signature.inputs.joinToString { (v, t) -> "__state.$v = nondet_${t.name}();" }}
+                        next_${system.name}(&__state);
+                        ${
+                contract.variableMap.joinToString("") { (cv, sv) ->
+                    val n = applySubst(sv)
+                    "__cstate.$cv = __state.${n};"
+                }
+            }
+                        next_${contract.contract.name}(&__cstate);
+                        assert(__cstate._error_);
+                    }
+                }
+            """.trimIndent()
+        outputFile.writeText(cfile)
+    }
+
+    private fun applySubst(port: IOPort): String {
+        val (sub, name) = port
+        return if (sub.isSelf) name else "$sub.$name"
     }
 }
 
 private fun Pair<String, List<CATransition>>.transitionAssignment(): String = buildString {
     val (state, inc) = this@transitionAssignment
-    append("bool next_$state = ")
+    //append("bool next_$state = ")
+    append("state->$state = ")
     inc.joinTo(this, " | ") {
         "state->${it.from} & pre_${it.name} & post_${it.name}"
     }
@@ -174,7 +248,7 @@ private fun Pair<String, List<CATransition>>.transitionAssignment(): String = bu
 }
 
 internal fun String.inState(stateVars: List<Variable>, prefix: String = "state->"): String {
-    var result = this
+    var result = this.toCExpr()
     stateVars.forEach {
         result = result.replace("\\b${it.name}\\b".toRegex(), "$prefix${it.name}")
     }

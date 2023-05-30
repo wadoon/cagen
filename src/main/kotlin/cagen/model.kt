@@ -32,6 +32,8 @@ data class Signature(
     val outputs: MutableList<Variable> = arrayListOf(),
     val internals: MutableList<Variable> = arrayListOf(),
 ) {
+    fun get(name: String) = all.find { it.name == name }
+
     val all
         get() = inputs + outputs + internals
 
@@ -55,24 +57,24 @@ data class System(
 
 data class UseContract(val contract: Contract, val variableMap: MutableList<Pair<String, IOPort>>)
 
-sealed interface Contract : Component {
-    val parent: MutableList<UseContract>
-}
+//sealed interface Contract : Component {}
 
-data class AGContract(
+/*data class AGContract(
     override val name: String, override val signature: Signature,
+    override val history: List<Pair<String, Int>>,
     val pre: String, val post: String, val isLtl: Boolean = false
 ) : Contract {
     override var parent: MutableList<UseContract> = arrayListOf()
-}
+}*/
 
-data class ContractAutomata(
+data class Contract(
     override val name: String,
     override val signature: Signature,
-    val transitions: List<CATransition>
+    val history: List<Pair<String, Int>>,
+    val transitions: List<CATransition>,
+    val parent: MutableList<UseContract> = arrayListOf()
 ) :
-    Contract {
-    override var parent: MutableList<UseContract> = arrayListOf()
+    Component {
     val contracts
         get() = transitions.map { it.contract }.toSet()
     val states
@@ -81,9 +83,11 @@ data class ContractAutomata(
 
 val counter = AtomicInteger()
 
-data class PrePost(val pre: String, val post: String) {
-    var name: String = "anonymous_${counter.getAndIncrement()}"
-}
+data class PrePost(
+    val pre: String,
+    val post: String,
+    var name: String = "anonymous_contract_${counter.getAndIncrement()}"
+)
 
 data class CATransition(
     val name: String,

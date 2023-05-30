@@ -23,6 +23,7 @@ dependencies {
     implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.8.1")
 
 
+    implementation("io.kpeg:kpeg:0.1.2")
 
     implementation("org.antlr:antlr4-runtime:4.13.0")
     antlr("org.antlr:antlr4:4.13.0")
