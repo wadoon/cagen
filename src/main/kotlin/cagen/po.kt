@@ -14,46 +14,17 @@ abstract class ProofObligation(val name: String) {
     abstract fun createFiles(folder: Path): List<POTask>
 }
 
-/*class ImplPOInv(val system: System, val useContract: UseContract) :
-    ProofObligation("PO_${system.name}_fulfills_${useContract.contract.name}") {
-    override fun createFiles(folder: Path): List<POTask> {
-        val vars = system.signature.all
-        val cfile =
-            """
-                // ProofObligation: $name
-                #include <${system.name}.c>
-                
-                int nondet_int(); 
-                bool nondet_bool();
-
-                int main() {
-                    ${system.name}_state __state; init_${system.name}(&__state);
-                    while(true) {
-                        ${system.signature.inputs.joinToString { (v, t) -> "__state.$v = nondet_${t.name}();" }}
-                        assume(${useContract.contract.pre.inState(vars, "state.")});
-                        next_${system.name}(&__state);
-                        assert(${useContract.contract.post.inState(vars, "state.")});
-                    }
-                }
-            """.trimIndent()
-        (folder / "po_$name.c").writeText(cfile)
-        return listOf(
-            POTask("${name}_cbmc", "cbmc --unwind 10 po_$name.c"),
-            POTask("${name}_seahorn", "seahorn --unwind 10 po_$name.c"),
-            POTask("${name}_cpachecker", "cpachecker --unwind 10 po_$name.c"),
-        )
-    }
-}*/
 
 /**
  * Verify the implementation against a contract (inv or contract automata)
  * */
-class ImplPOMonitor(val system: System, val contract: UseContract) :
+class ImplPOMonitor(val model: Model, val system: System, val contract: UseContract) :
     ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}") {
     override fun createFiles(folder: Path): List<POTask> {
         val outputFolder = folder / name
         Files.createDirectories(outputFolder)
 
+        CCodeUtils.writeGlobals(folder, model.globalDefines, model.globalCode)
         CCodeUtils.writeContractAutomata(contract.contract, outputFolder)
         CCodeUtils.writeSystemCode(system, outputFolder)
         CCodeUtils.writeGlueCode(system, contract, outputFolder / "$name.c")
@@ -66,14 +37,14 @@ class ImplPOMonitor(val system: System, val contract: UseContract) :
     }
 }
 
-class ImplPOMonitorSimplified(val system: System, val contract: UseContract) :
+class ImplPOMonitorSimplified(val model: Model, val system: System, val contract: UseContract) :
     ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}_simple") {
     override fun createFiles(folder: Path): List<POTask> {
         val outputFile = folder / "$name.c"
         Files.createDirectories(outputFile.parent)
 
         PrintWriter(outputFile.bufferedWriter()).use { out ->
-            CCodeUtilsSimplified.header(out)
+            CCodeUtilsSimplified.header(out, model)
             CCodeUtilsSimplified.writeContractAutomata(contract.contract, out)
             CCodeUtilsSimplified.writeSystemCode(system, out)
             CCodeUtilsSimplified.writeGlueCode(system, contract, out)
@@ -94,7 +65,7 @@ class ComposedValidPO(val system: System) : ProofObligation("PO_${system.name}_c
     }
 }
 
-class ComposedRefinedPO(val system: System, val contract: UseContract) :
+class ValidityPO(model: Model, val system: System, val contract: UseContract) :
     ProofObligation("PO_${system.name}_composition_refine") {
     override fun createFiles(folder: Path): List<POTask> {
         val filename = folder / "$name.smv"
@@ -111,7 +82,7 @@ class ComposedRefinedPO(val system: System, val contract: UseContract) :
     }
 }
 
-class ContractRefinementPO(val contract: Contract, val refined: UseContract) :
+class ContractRefinementPO(model: Model, val contract: Contract, val refined: UseContract) :
     ProofObligation("PO_${contract.name}_refines_${refined.contract.name}") {
     override fun createFiles(folder: Path): List<POTask> {
         val sub = contract.signature.all
@@ -190,26 +161,23 @@ private infix fun String.notin(map: List<Pair<String, IOPort>>): Boolean = map.f
 
 private fun Contract.toSmv() = SmvUtils.toSmv(this)
 
-fun createProofObligations(components: List<Component>): List<ProofObligation> {
+fun createProofObligations(model: Model): List<ProofObligation> {
     val obligations = mutableListOf<ProofObligation>()
-    for (c in components) {
-        if (c is Contract) {
-            c.parent.forEach {
-                obligations.add(ContractRefinementPO(c, it))
-            }
+    model.contracts.forEach { c ->
+        c.parent.forEach {
+            obligations.add(ContractRefinementPO(model, c, it))
         }
+    }
 
-        if (c is System) {
-            if (c.code != null)
-                c.contracts.forEach {
-                    obligations.add(ImplPOMonitor(c, it))
-                    obligations.add(ImplPOMonitorSimplified(c,it))
-                }
-            else {
-                c.contracts.forEach {
-                    obligations.add(ComposedRefinedPO(c, it))
-                }
-                obligations.add(ComposedValidPO(c))
+    for (c in model.systems) {
+        if (c.code != null)
+            c.contracts.forEach {
+                obligations.add(ImplPOMonitor(model, c, it))
+                obligations.add(ImplPOMonitorSimplified(model, c, it))
+            }
+        else {
+            c.contracts.forEach {
+                obligations.add(ValidityPO(model, c, it))
             }
         }
     }

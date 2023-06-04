@@ -237,6 +237,15 @@ object CCodeUtils {
         val (sub, name) = port
         return if (sub.isSelf) name else "$sub.$name"
     }
+
+    fun writeGlobals(folder: Path, globalDefines: MutableList<Variable>, globalCode: String) {
+        writeCode(folder, "globals.h", """
+        ${globalDefines.joinToString("\n") { 
+            "const ${it.type.toC()} ${it.name} = ${it.initValue.toCExpr()};"
+        }}
+        $globalCode            
+        """.trimIndent())
+    }
 }
 
 private fun Pair<String, List<CATransition>>.transitionAssignment(): String = buildString {

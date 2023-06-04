@@ -41,6 +41,8 @@ generateGrammarSource {
     this.arguments.add("cagen.parser")
 }
 
+tasks.getByName("compileTestKotlin").dependsOn("generateTestGrammarSource")
+
 testing {
     suites {
         val test by getting(JvmTestSuite::class) {

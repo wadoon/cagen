@@ -1,9 +1,6 @@
 package cagen.cagen.gen
 
-import cagen.Contract
-import cagen.System
-import cagen.Type
-import cagen.UseContract
+import cagen.*
 import cagen.gen.CCodeUtils
 import java.io.PrintWriter
 
@@ -149,18 +146,24 @@ object CCodeUtilsSimplified {
         .replace("&", "&&")
         .replace("|", "||")
 
-    fun header(out: PrintWriter) {
+    fun header(out: PrintWriter, model: Model) {
         out.println(
             """
             #include <stdbool.h>
             #include <stdint.h>
+            
             #ifdef SEAHORN
             #include "seahorn/seahorn.h"
             #else 
             #include <assert.h>
             #endif 
+            
             bool nondet_bool() {bool b;return b;}
             bool nondet_int() {int i;return i;}
+            
+            ${model.globalDefines.joinToString("\n") { "const ${it.type.toC()} ${it.name} = ${it.initValue.toCValue()};" }}
+            
+            ${model.globalCode}
         """.trimIndent()
         )
     }

@@ -1,120 +1,208 @@
-const mioD = "mioDistance";
-const mioV = "mioVelocity";
-const egoV = "egoVelocity";
-const PBA = "PB1decel";
-const PBB= "PB2decel";
-const FB = "FBdecel";
-const FCW="FCWStoppingTime";
-const PBAST="PB1StoppingTime";
-const PBBST="PB2StoppingTime";
-const FBST="FBStoppingTime";
-const coll="collision";
-const escalate="escalate";
+defines {
+    PB1_DECEL : int := "0sd32_5"
+    PB2_DECEL : int := "0sd32_10"
+    FB_DECEL  : int := "0sd32_15"
 
+    C1        : int := "0sd32_1"
 
-contract automata AEBLogic_Spec {
-    in int TTC, FCWtime, PB1time, PB2time, FBtime, FBdecel, PB1decel, PB2decel;
-    in bool stop;
-    out int FCWactivate, decel, AEBstatus;
-
-    STANDBY -> STANDBY :: "! escalate" / "AEBstatus=0 && decel == 0 && FCWactivate == 0";
-    STANDBY -> WARN :: "escalate" / "AEBstatus==0 && decel == 0 && FCWactivate==1";
-    WARN -> BREAK :: "\escalate" / "AEBstatus > 0 && decel > 0 && FCWactivate == 1";
-    WARN -> WARN :: "!\escalate" / "AEBstatus > 0 && decel > 0 && FCWactivate == 1";
-    BREAK -> BREAK :: "! stop" / "AEBstatus > 0 && decel > 0 && FCWactivate == 1";
-    BREAK -> STANDBY :: "stop" / "AEBstatus ==0 && decel == 0 && FCWactivate == 1";
-    BREAK -> BREAK ::   "stop" / "AEBstatus ==0 && decel == 0 && FCWactivate == 1";
+    headawayOffset : int := "0sd32_3"  // 3.7
+    reactTime      : int := "0sd32_2"  // 1.5 seconds
 }
 
-system AEBLogic {
-    in int TTC, FCWtime, PB1time, PB2time, FBtime, FBdecel, PB1decel, PB2decel;
-    in bool stop;
-    out int FCWactivate, decel, AEBstatus;
-    implemented in "system.c" named "aeblogic";
+{=
+    // const int M_DEFAULT = 0, M_FCW = 1, M_PARTIAL_BREAKING_1 = 2,
+    //          M_PARTIAL_BREAKING_2 = 3, M_FULL_BREAKING = 4;
+    int abs(int x) { return x < 0 ? -x : x; }
+    int min(int x, int y) { return x < y ? x : y; }
+    int max(int x, int y) { return x > y ? x : y; }
+    int clamp(int l, int x, int u) { return min(max(x, l), u); }
+=}
 
-    use contract AEBLogic_Spec with ;
+contract AEBLogic_Spec {
+    input TTC, FCWtime, PB1time, PB2time, FBtime, FBdecel, PB1decel, PB2decel : int
+    input stop : bool
+    output FCWactivate, decel, AEBstatus : int
 
+    STANDBY -> STANDBY :: "! escalate" ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate == 0sd32_0"
+    STANDBY -> WARN    :: "escalate"   ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate == 0sd32_1"
+    WARN -> BREAK      :: "\escalate"  ==> "AEBstatus > 0sd32_0 & decel > 0sd32_0 & FCWactivate == 0sd32_1"
+    WARN -> WARN       :: "!\escalate" ==> "AEBstatus > 0sd32_0 & decel > 0sd32_0 & FCWactivate == 0sd32_1"
+    BREAK -> BREAK     :: "! stop"     ==> "AEBstatus > 0sd32_0 & decel > 0sd32_0 & FCWactivate == 0sd32_1"
+    BREAK -> STANDBY   :: "stop"       ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate == 0sd32_1"
+    BREAK -> BREAK     :: "stop"       ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate == 0sd32_1"
 }
 
-system TTCCalculation {
-    in int mioDistance, mioVelocity;
-    out bool collision;
-    out int TTC;
+reactor AEBLogic {
+    input TTC, FCWtime, PB1time, PB2time, FBtime, FBdecel, PB1decel, PB2decel : int
+    input stop : bool
+    output FCWactivate, decel, AEBstatus : int
 
-    implemented in "system.c" named "TTCCalculation";
+    contract AEBLogic_Spec
+
+    {=
+         switch (mode) {
+           case 0://M_DEFAULT:
+             AEBstatus = 0;
+             FCWactivate = 0;
+             decel = 0;
+
+             if (abs(TTC) < FCWtime && TTC < 0) {
+               mode = M_FCW;
+             }
+
+             break;
+           case 1://M_FCW:
+             AEBstatus = 0;
+             FCWactivate = 1;
+             decel = 0;
+
+             if (abs(TTC) < PB1time && TTC < 0) {
+               mode = M_PARTIAL_BREAKING_1;
+             } else if (abs(TTC) < (10 * FCWtime) / 12 && TTC < 0) {
+               mode = M_DEFAULT;
+             }
+             break;
+           case 2://M_PARTIAL_BREAKING_1:
+             AEBstatus = 1;
+             FCWactivate = 1;
+             decel = PB1decel;
+
+             if (abs(TTC) < PB2time && TTC < 0) {
+               mode = M_PARTIAL_BREAKING_2;
+             } else if (stop) {
+               mode = M_DEFAULT;
+             }
+             break;
+           case 3://M_PARTIAL_BREAKING_2:
+             AEBstatus = 2;
+             FCWactivate = 1;
+             decel = PB2decel;
+
+             if (abs(TTC) < FBtime && TTC < 0) {
+               mode = M_FULL_BREAKING;
+             } else if (stop) {
+               mode = M_DEFAULT;
+             }
+             break;
+           case 4://M_FULL_BREAKING:
+             AEBstatus = 3;
+             FCWactivate = 1;
+             decel = FBdecel;
+
+             if (stop) {
+               mode = M_DEFAULT;
+             }
+             break;
+           default:
+             assert(false);
+           }
+       =}
 }
 
-system StoppingTimeCalculation {
-    in int egoVelocity, PB1decel, PB2decel, FBdecel;
-    out int FCWStoppingTime, PB1StoppingTime, PB2StoppingTime, FBStoppingTime;
+contract TTC_Spec {
+    input mioDistance, mioVelocity : int
+    output collision : bool
+    output TTC : int
 
-    implemented in "system.c" named "StoppingTimeCalculation";
+    init -> init :: " 0sd32_0 <= mioDistance
+                    &            mioDistance <= 0sd32_1024
+                    & -0sd32_1024 <= mioVelocity
+                    &                mioVelocity <= 0sd32_1024 "
+                    ==> " (collision = 0sd32_0 | collision = 0sd32_1)
+                        & 0sd32_0 <= TTC "
 }
 
-system C1 {
-    constant float "0.1";
+reactor TTCCalculation {
+    input mioDistance, mioVelocity : int
+    output collision : bool
+    output TTC : int
+
+    contract TTC_Spec
+
+    {=
+      int headaway = mioDistance - headawayOffset;
+      int abs = mioVelocity < 0 ? -mioVelocity : mioVelocity;
+      int clamped = clamp(10, abs, 150);
+      TTC = 128 * headaway / clamped;
+      TTC = TTC * (mioVelocity > 25);
+      collision = headaway < 13;
+    =}
 }
 
-system PB1_decel {
-    constant float "PB1_decel";
+contract STC {
+    input egoVelocity, PB1decel, PB2decel, FBdecel : int
+    output FCWStoppingTime, PB1StoppingTime, PB2StoppingTime, FBStoppingTime :int
+
+    init -> init :: "0sd32_0 <= PB1_DECEL & PB1_DECEL <= PB2_DECEL
+                               & PB2_DECEL <= FB_DECEL
+                               & 0sd32_0 <= egoVelocity"
+                    ==>
+                    "reactTime <= FCWStoppingTime &
+                     FBStoppingTime <= PB1StoppingTime &
+                     PB1StoppingTime <= PB2StoppingTime"
 }
 
-system PB2_decel {
-    constant float "PB2_decel";
+reactor StoppingTimeCalculation {
+    input egoVelocity, PB1decel, PB2decel, FBdecel : int
+    output FCWStoppingTime, PB1StoppingTime, PB2StoppingTime, FBStoppingTime :int
+
+    contract STC[]
+
+    {=
+      FBStoppingTime = egoVelocity / FBdecel;
+      PB1StoppingTime = egoVelocity / FB1decel;
+      PB1StoppingTime = egoVelocity / FB2decel;
+      FCWStoppingTime = FBStoppingTime + reactTime;
+    =}
 }
 
-system FB_decel {
-    constant float "FB_decel";
+
+contract Gt_Spec {
+    input  a : int
+    output v : bool
+    init -> init :: "true" ==> "v = (a <= C1)"
+}
+
+reactor Gt  {
+    input  a : int
+    output v : bool
+
+    contract Gt_Spec[]
+
+    {= v = a <= C1; =}
 }
 
 
-system gt {
-    in int a, b;
-    out bool v;
-    display "≤";
-    function "a<=b";
-}
+reactor AEBTop {
+    input  mioDistance, mioVelocity, egoVelocity : int
+    output collision, egoCarStop : bool
+    output FCWactivate, AEBStatus, deceleration : int
 
-system AEBTop {
-    in int mioDistance, mioVelocity, egoVelocity;
-    out bool collision, egoCarStop;
-    out int FCWactivate, AEBStatus, deceleration;
+    state logic : AEBLogic
+    state ttc   : TTCCalculation
+    state stc   : StoppingTimeCalculation
+    state gt    : Gt
 
-    sub-systems logic as AEBLogic, ttc as TTCCalculation, stc as StoppingTimeCalculation,
-                gt, C1, PB1_decel, PB2_decel, FB_decel;
+    logic.FCWactivate  -> self.FCWactivate
+    logic.decel        -> self.deceleration
+    logic.AEBStatus    -> self.AEBStatus
 
-    connected logic.FCWactivate to self.FCWactivate,
-              logic.decel to self.deceleration,
-              logic.AEBStatus to self.AEBStatus,
+    self.mioDistance -> ttc.mioDistance
+    self.mioVelocity -> ttc.mioVelocity
 
-              self.mioDistance to ttc.mioDistance,
-              self.mioVelocity to ttc.mioVelocity,
+    self.egoVelocity -> stc.egoVelocity
+    self.egoVelocity -> gt.a
 
-              ttc.TTC to logic.TTC,
-              ttc.collision to self.collision,
 
-              self.egoVelocity to stc.egoVelocity,
+    gt.v -> self.egoCarStop
+    gt.v -> logic.stop
 
-              self.egoVelocity to gt.a,
-              C1.const to gt.b,
-              gt.v to self.egoCarStop,
-              gt.v to logic.stop,
+    ttc.TTC -> logic.TTC
+    ttc.collision -> self.collision
 
-              stc.FCWStoppingTime to  logic.FCWtime,
-              stc.PB1StoppingTime to logic.PB1time,
-              stc.PB2StoppingTime to logic.PB2time,
-              stc.FBStoppingTime to logic.FBtime,
 
-              PB1_decel.const to logic.PB1decel,
-              PB2_decel.const to logic.PB2decel,
-              FB_decel.const to logic.FBdecel,
-              PB1_decel.const to stc.PB1decel,
-              PB2_decel.const to stc.PB2decel,
-              FB_decel.const to stc.FBdecel
-    ;
-}
-
-contract ltl SimpleContract {
-    assume "true";
-    guarantee  "true";
+    stc.FCWStoppingTime ->  logic.FCWtime
+    stc.PB1StoppingTime -> logic.PB1time
+    stc.PB2StoppingTime -> logic.PB2time
+    stc.FBStoppingTime -> logic.FBtime
 }

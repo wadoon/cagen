@@ -25,11 +25,11 @@ object ParserFacade {
         it.addErrorListener(ExceptionalErrorListener())
     }
 
-    private fun interpret(parser: SystemDefParser): Pair<ArrayList<System>, ArrayList<Contract>> {
+    private fun interpret(parser: SystemDefParser): Model {
         val ctx = parser.model()
         val t = Translator()
         ctx.accept(t)
-        return t.systems to t._contracts
+        return t.model
     }
 
     fun loadFile(file: File) = interpret(parser(lexer(CharStreams.fromPath(file.toPath()))))
@@ -81,11 +81,27 @@ data class IOPort(val variable: Variable, val portName: String)
 
 private val self = Variable("self", BuiltInType("self"), "")
 
+data class Model(
+    val systems: MutableList<System> = arrayListOf<System>(),
+    val contracts: MutableList<Contract> = arrayListOf<Contract>(),
+    val globalDefines: MutableList<Variable> = arrayListOf<Variable>(),
+    var globalCode: String = ""
+)
+
 class Translator : SystemDefBaseVisitor<Unit>() {
-    val systems = arrayListOf<System>()
-    val _contracts = arrayListOf<Contract>()
+    val model = Model()
 
     override fun visitModel(ctx: SystemDefParser.ModelContext) {
+        model.globalCode = ctx.globalCode?.text ?: ""
+        ctx.defines()?.variable()?.forEach { varctx ->
+            val typename = varctx.t.text
+            val type =
+                if (typename in KNOWN_BUILT_IN_TYPES) BuiltInType(typename)
+                else SystemType(model.systems.find { it.name == typename }
+                    ?: error("Could not find a system with $typename ${varctx.position}"))
+            val init = varctx.init?.text ?: "0"
+            for (token in varctx.n) model.globalDefines.add(Variable(token.text, type, init))
+        }
         ctx.contract().forEach { it.accept(this) }
         ctx.system().forEach { it.accept(this) }
     }
@@ -97,12 +113,12 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         val contracts = ctx.use_contracts().flatMap {
             it.use_contract().map { uc ->
                 UseContract(
-                    _contracts.find { c -> c.name == uc.Ident().text }
+                    model.contracts.find { c -> c.name == uc.Ident().text }
                         ?: error("Could not find contract ${uc.Ident().text}"),
                     parseSubst(uc.subst(), signature, self))
             }
         }
-        systems.add(
+        model.systems.add(
             System(
                 ctx.Ident().text,
                 signature,
@@ -118,11 +134,17 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         signature: Signature,
         self: Variable
     ): MutableList<Pair<String, IOPort>> =
-        subst.map {
-            val local = it.local.text
-            val outer = port(it.from, signature, self)
-            local to outer
-        }.toMutableList()
+        if (!subst.isEmpty()) {
+            subst.map {
+                val local = it.local.text
+                val outer = port(it.from, signature, self)
+                local to outer
+            }.toMutableList()
+        } else {
+            (signature.inputs + signature.outputs).map {
+                it.name to IOPort(self, it.name)
+            }.toMutableList()
+        }
 
     private fun parseConnections(
         ctx: List<ConnectionContext>,
@@ -136,7 +158,8 @@ class Translator : SystemDefBaseVisitor<Unit>() {
     private fun port(ioportContext: SystemDefParser.IoportContext, signature: Signature, self: Variable) =
         IOPort(
             ioportContext.inst?.let { inst ->
-                (signature.all).find { it.name == inst.text }
+                if (inst.text == "self") self
+                else (signature.all).find { it.name == inst.text }
                     ?: error("Could not find '${inst.text}' in signature $signature")
             } ?: self,
             ioportContext.port.text)
@@ -156,7 +179,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
                 val typename = varctx.t.text
                 val type =
                     if (typename in KNOWN_BUILT_IN_TYPES) BuiltInType(typename)
-                    else SystemType(systems.find { it.name == typename }
+                    else SystemType(model.systems.find { it.name == typename }
                         ?: error("Could not find a system with $typename ${varctx.position}"))
                 val init = varctx.init?.text ?: "0"
                 for (token in varctx.n) list.add(Variable(token.text, type, init))
@@ -179,7 +202,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
     private fun Contract.setParent(inherit: MutableList<SystemDefParser.Use_contractsContext>): Contract {
         val contracts = inherit.flatMap { seq ->
             seq.use_contract().map { uc ->
-                val contract: Contract = (_contracts.find { c -> c.name == uc.Ident().text }
+                val contract: Contract = (model.contracts.find { c -> c.name == uc.Ident().text }
                     ?: error("Could not find contract ${uc.Ident().text}"))
                 UseContract(contract, parseSubst(uc.subst(), signature, self))
             }
@@ -204,7 +227,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             CATransition("t_${it.start.line}", it.from.text, it.to.text, contract)
         }
         println(transitions)
-        _contracts.add(
+        model.contracts.add(
             Contract(ctx.name.text, parseIo(ctx.io()), parseHistory(ctx.history()), transitions)
                 .setParent(ctx.use_contracts())
         )
@@ -284,7 +307,6 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         override fun visitCasesExprAtom(ctx: SystemDefParser.CasesExprAtomContext): SMVExpr {
             return super.visitCasesExprAtom(ctx)
         }
-
 
         override fun visitArrayAccess(ctx: SystemDefParser.ArrayAccessContext): SMVExpr {
             throw IllegalStateException("not supported")

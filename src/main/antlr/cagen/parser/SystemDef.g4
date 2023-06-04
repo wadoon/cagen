@@ -2,7 +2,7 @@ grammar SystemDef;
 
 // Parser
 
-model: include* (contract|system)* EOF;
+model: include* defines? globalCode=CODE? (contract|system)* EOF;
 include: 'include' STRING;
 
 contract: automata | invariant;
@@ -43,6 +43,7 @@ use_contracts: CONTRACT use_contract (COMMA use_contract)*;
 use_contract: Ident ('[' (subst (COMMA subst)*)? ']')?;
 subst: local=Ident BARROW from=ioport;
 
+defines: 'defines' LBRACE variable+ RBRACE;
 io: type=(INPUT|OUTPUT|STATE) variable (COMMA variable)*;
 history: 'history' n=Ident LPAREN INT RPAREN;
 variable: n+=Ident (COMMA n+=Ident)* COLON t=Ident (':=' init=STRING)?;
