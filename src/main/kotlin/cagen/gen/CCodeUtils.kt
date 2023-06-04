@@ -1,6 +1,8 @@
 package cagen.gen
 
 import cagen.*
+import cagen.cagen.gen.CCodeUtilsSimplified.toC
+import cagen.cagen.gen.CCodeUtilsSimplified.toCExpr
 import java.nio.file.Path
 import kotlin.io.path.div
 import kotlin.io.path.writeText
@@ -231,7 +233,7 @@ object CCodeUtils {
         outputFile.writeText(cfile)
     }
 
-    private fun applySubst(port: IOPort): String {
+    fun applySubst(port: IOPort): String {
         val (sub, name) = port
         return if (sub.isSelf) name else "$sub.$name"
     }
@@ -246,7 +248,6 @@ private fun Pair<String, List<CATransition>>.transitionAssignment(): String = bu
     }
     append(";")
 }
-
 internal fun String.inState(stateVars: List<Variable>, prefix: String = "state->"): String {
     var result = this.toCExpr()
     stateVars.forEach {

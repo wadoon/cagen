@@ -1,8 +1,11 @@
 package cagen
 
+import cagen.cagen.gen.CCodeUtilsSimplified
 import cagen.gen.CCodeUtils
+import java.io.PrintWriter
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.bufferedWriter
 import kotlin.io.path.div
 import kotlin.io.path.writeText
 
@@ -63,121 +66,24 @@ class ImplPOMonitor(val system: System, val contract: UseContract) :
     }
 }
 
-private fun System.toC(): String = buildString {
-    append("struct ${name}_state {  ${signature.all.joinToString("\n") { "${it.type.toC()} ${it.name};" }}};")
-    append("""
-        void init_${name}(${name}_state* s) { 
-        s = {${
-        signature.all.filter { it.initValue.isNotBlank() }.joinToString(", ") {
-            ".${it.name} = ${it.initValue.toCValue()}"
-        }
-    }};} """)
+class ImplPOMonitorSimplified(val system: System, val contract: UseContract) :
+    ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}_simple") {
+    override fun createFiles(folder: Path): List<POTask> {
+        val outputFile = folder / "$name.c"
+        Files.createDirectories(outputFile.parent)
 
-    append("""
-        void next_${name}(${name}_state* s) {
-         ${
-        (signature.all).joinToString("\n") {
-            "${it.type.toC()} ${it.name} = s->${it.name};"
+        PrintWriter(outputFile.bufferedWriter()).use { out ->
+            CCodeUtilsSimplified.header(out)
+            CCodeUtilsSimplified.writeContractAutomata(contract.contract, out)
+            CCodeUtilsSimplified.writeSystemCode(system, out)
+            CCodeUtilsSimplified.writeGlueCode(system, contract, out)
         }
+        return listOf(
+            POTask("${name}_cbmc", "cbmc --unwind 10 $name.c"),
+            POTask("${name}_seahorn", "seahorn --unwind 10 $name.c"),
+            POTask("${name}_cpachecker", "cpachecker --unwind 10 $name.c")
+        )
     }
-        ${code ?: ""}
-        ${
-        (signature.all).joinToString("\n") {
-            "s->${it.name} = ${it.name};"
-        }
-    }
-    }"""
-    )
-}
-
-fun Type.toC(): String = name
-
-private fun String.toCValue() = when (this) {
-    "TRUE" -> 1
-    "FALSE" -> 0
-    else -> when {
-        startsWith("0") -> this.substringAfter("_")
-        else -> this
-    }
-}
-
-private fun Contract.toC(): String = buildString {
-    append(
-        """
-        struct ${name}_state {  
-        ${signature.all.joinToString("\n") { "${it.type.toC()} ${it.name};" }}
-        ${states.joinToString("\n") { "bool $it;" }}
-        bool _error_, _final_,  _assume_;
-        
-        ${
-            history.forEach { (n, d) ->
-                val t = signature.get(n)?.type?.toC()
-                (0..d).joinToString("\n") { "$t h_${n}_$it;" }
-            }
-        }        
-        };"""
-    )
-
-    append("""
-        void init_${name}(${name}_state* s) { 
-        s = {._error_=false, ._final_=false,  ._assume_=false,
-        ${
-        states.joinToString(", ") {
-            ".${name} = ${if (name.first().isLowerCase()) "true" else "false"}"
-        }
-    }};
-    }""")
-
-
-
-    append("void next_${name}(${name}_state* s) {")
-    append(
-        (signature.all).joinToString("\n") {
-            "${it.type.toC()} ${it.name} = s->${it.name};"
-        })
-    append(
-        history.forEach { (n, d) ->
-            val t = signature.get(n)?.type?.toC()
-            (d downTo 1).joinToString("\n") { "h_${n}_$it = h_${n}_${it - 1};" } +
-                    "h_${n}_0 = $n;"
-        }
-    )
-
-    fun assignb(v: String, e: String) = "bool $v = ${e.toCExpr()};"
-
-    append("""
-    STATE_IN_NEXT := ( ${states.joinToString(" | ") { "next($it)" }} );
-    ${
-        contracts.joinToString("\n") {
-            assignb("pre_${it.name}", it.pre) + assignb("post_${it.name}", it.post)
-
-            "post_${it.name} := ${it.post};\n" +
-                    "${it.name} := pre_${it.name} & post_${it.name};\n"
-        }
-    }
-    ${transitions.joinToString("\n") { "${it.name} := ${it.from} & ${it.contract.name};" }}
-    bool VALID_PRE_COND := ${transitions.joinToString(" | ") { "(${it.from} & pre_${it.contract.name})" }};
-    bool VALID_POST_COND := ${transitions.joinToString(" | ") { "(${it.from} & post_${it.contract.name})" }};
-         
-    ${
-        transitions.groupBy { it.to }.toList().joinToString("\n") { (s, inc) ->
-            "s->$s) := ${inc.joinToString(" | ") { it.name }};"
-        }
-    }
- 
-    s->_error_ = ! STATE_IN_NEXT    & VALID_PRE_COND;
-    s->_assume_ = ! STATE_IN_NEXT  & ! VALID_PRE_COND;
-    """.trimIndent()
-    )
-
-    append((signature.all).joinToString("\n") {
-        "s->${it.name} = ${it.name};"
-    })
-    append("}")
-}
-
-fun String.toCExpr(): String {
-    return this.replace("0sd32_", "")
 }
 
 data class POTask(val taskName: String = "", val command: String = "")
@@ -297,6 +203,7 @@ fun createProofObligations(components: List<Component>): List<ProofObligation> {
             if (c.code != null)
                 c.contracts.forEach {
                     obligations.add(ImplPOMonitor(c, it))
+                    obligations.add(ImplPOMonitorSimplified(c,it))
                 }
             else {
                 c.contracts.forEach {

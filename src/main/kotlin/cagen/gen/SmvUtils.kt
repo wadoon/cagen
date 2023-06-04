@@ -67,14 +67,15 @@ object SmvUtils {
         }
             
     init(_error_) := FALSE;
-    next(_error_) := ! STATE_IN_NEXT    -- not activate state 
-                      & VALID_PRE_COND; -- and the reason is a post-condition violation (there exists a valid pre-condition)
+    next(_error_) := _error_ | -- either there was already an error condition 
+                        ( ! STATE_IN_NEXT -- not activate state 
+                        & VALID_PRE_COND) ; -- and the reason is a post-condition violation (there exists a valid pre-condition)
 
     init(_final_) := FALSE;
     next(_final_) := FALSE;
 
     init(_assume_) := FALSE;
-    next(_assume_) := ! STATE_IN_NEXT  & ! VALID_PRE_COND; -- and the reason is all pre-condition will be violated
+    next(_assume_) := _assume_ | (! STATE_IN_NEXT  & ! VALID_PRE_COND & !_error_); -- and the reason is all pre-condition will be violated
     """.trimIndent()
         return content
     }
