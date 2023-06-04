@@ -6,7 +6,6 @@ contract Interval {
 contract UpDown {
     input  tick : bool
     output cnt  : int
-    state  down : bool
 
     history cnt(1)
 
