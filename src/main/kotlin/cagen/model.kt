@@ -51,6 +51,13 @@ data class System(
     val code: String? = null,
     val contracts: MutableList<UseContract> = arrayListOf()
 ) : Component {
+    val subSystems
+        get() = signature.instances.map { (it.type as SystemType).system }
+
+    val subSystemsTrans: List<System>
+        get() = listOf(this) + subSystems.flatMap { it.subSystemsTrans }
+
+
     val toporder: String
         get() = toporder(ArrayList(signature.instances), ArrayList(connections))
 }
@@ -131,4 +138,34 @@ private fun toporder(
     }
     remaining.removeAll(front)
     return s + toporder(remaining, ports)
+}
+
+private fun topordersys(
+    remaining: MutableList<Variable>,
+    ports: MutableList<Pair<IOPort, IOPort>>
+): List<Variable> {
+    if (remaining.isEmpty()) return listOf()
+
+    val remPorts = ports.filter { it.second.variable in remaining && it.first.variable in remaining }
+
+    // find variable which does not have an incoming edge (ignoring self edges)
+    val front = remaining.filter { v ->
+        remPorts.all { (_, to) -> to.variable != v }
+    }
+
+    if (front.isEmpty() && ports.isNotEmpty())
+        error("We have a problem building the topological order. Check for cycles!")
+
+    fun variable(v: IOPort): String =
+        if (v.variable.name == "self") "state->${v.portName}"
+        else "state->${v.variable.name}.${v.portName}"
+
+    for (variable in front) {
+        val incoming = ports.filter { it.second.variable == variable }
+        val outgoing = ports.filter { it.first.variable == variable }
+        ports.removeAll(incoming)
+        ports.removeAll(outgoing)
+    }
+    remaining.removeAll(front)
+    return front + topordersys(remaining, ports)
 }

@@ -132,7 +132,7 @@ object CCodeUtilsSimplified {
 
     fun Type.toC(): String = name
 
-    private fun String.toCValue() = when (this) {
+    public fun String.toCValue() = when (this) {
         "TRUE" -> 1
         "FALSE" -> 0
         else -> when {
@@ -142,7 +142,8 @@ object CCodeUtilsSimplified {
     }
 
     fun String.toCExpr() = this.replace("0sd32_", "")
-        .replace("=", "==")
+            // matches a = without a leading <, >, = or = as a suffix
+        .replace("(?<!(<|>|=))=(?!=)".toRegex(), "==")
         .replace("&", "&&")
         .replace("|", "||")
 
@@ -161,7 +162,7 @@ object CCodeUtilsSimplified {
             bool nondet_bool() {bool b;return b;}
             bool nondet_int() {int i;return i;}
             
-            ${model.globalDefines.joinToString("\n") { "const ${it.type.toC()} ${it.name} = ${it.initValue.toCValue()};" }}
+            ${model.globalDefines.joinToString("\n") { "const ${it.type.toC()} ${it.name} = ${it.initValue.trim('"').toCValue()};" }}
             
             ${model.globalCode}
         """.trimIndent()

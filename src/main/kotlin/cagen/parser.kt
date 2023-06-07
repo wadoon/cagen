@@ -92,7 +92,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
     val model = Model()
 
     override fun visitModel(ctx: SystemDefParser.ModelContext) {
-        model.globalCode = ctx.globalCode?.text ?: ""
+        model.globalCode = ctx.globalCode?.text?.let { cleanCode(it) } ?: ""
         ctx.defines()?.variable()?.forEach { varctx ->
             val typename = varctx.t.text
             val type =

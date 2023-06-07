@@ -161,6 +161,98 @@ INVARSPEC parent.ASSUMPTION -> sub.ASSUMPTION;
 INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
 """.trimIndent()
     }
+
+    fun toSmv(system: System, contract: UseContract): String = with(system) {
+        val inputvars = arrayListOf<Variable>()
+
+        fun applySubst(v: Variable): String {
+            val ioPort = contract.variableMap.find {
+                it.first == v.name
+            }
+            return ioPort?.second?.portName ?: v.name
+        }
+
+        val inputs = (system.signature.inputs + system.signature.outputs)
+            .associate { it.name to it.type.asSmvType }
+            .toList()
+            .joinToString("\n") { "    self_${it.first} : ${it.second};" }
+
+
+        var contracts = mutableSetOf<Contract>()
+
+        buildString {
+            append(
+                """
+                MODULE main
+                VAR
+                    contract
+                        : ${contract.contract.name}(
+                            ${contract.contract.signature.inputs.joinToString(", ") { applySubst(it) }.comma()}
+                            ${system.signature.outputs.joinToString(", ") { applySubst(it) }});
+                
+                IVAR
+                    $inputs
+                    
+                VAR """
+            )
+
+            system.signature.instances.forEach { inst ->
+                val sys = (inst.type as SystemType).system
+                val useContract = sys.contracts.first()
+                contracts.add(useContract.contract)
+
+                (sys.signature.inputs + sys.signature.outputs).forEach {
+                    inputvars.add(it.copy(name = "${inst.name}_${it.name}"))
+                }
+
+                val params = (useContract.contract.signature.inputs
+                        + useContract.contract.signature.outputs).joinToString {
+                    applySubst(useContract.variableMap, it, inst.name)
+                }
+
+                append("    ${inst.name} : ${useContract.contract.name}($params);\n")
+            }
+
+            append("\nIVAR\n")
+            append(inputvars.joinToString("\n") { "    ${it.name} : ${it.type.asSmvType};" })
+
+            append("\nINVAR  -- encode the connection of variables\n")
+            append(
+                system.connections.joinToString("\n&", "", ";") {
+                    "${it.first.variable.name}_${it.first.portName} =${it.second.variable.name}_${it.second.portName}"
+                })
+
+            system.signature.instances.forEach { inst ->
+                val sys = (inst.type as SystemType).system
+                val useContract = sys.contracts.first()
+                val downstream = inst.name
+                val upstream = connections
+                    .filter { (a, b) -> b.variable == inst && a.variable.name != "self" }
+                    .map { (a, _) -> a.variable }
+                    .toSet()
+                    .joinToString(" & ") { "${it.name}.GUARANTEE" }
+                    .ifEmpty { "TRUE" }
+                append("\nINVARSPEC contract.ASSUMPTION & $upstream -> ${downstream}.ASSUMPTION")
+            }
+
+            append("\nINVARSPEC ${system.signature.instances.joinToString(" & ") { "${it.name}.GUARANTEE" }} -> contract.GUARANTEE")
+
+            append("\n")
+            append("-".repeat(80))
+            append("\n")
+
+            contracts.forEach { append(toSmv(it)) }
+        }
+    }
+
+    fun applySubst(map: MutableList<Pair<String, IOPort>>, variable: Variable, instanceName: String): String {
+        val ioPort = map.find {
+            it.first == variable.name
+        }
+        require(ioPort != null) { "ioPort is null. Variable of contract is unbound!" }
+        require(ioPort.second.variable.name == "self") { "Only top level variables supported." }
+        return "${instanceName}_${ioPort.second.portName}"
+    }
 }
 
-private fun String.comma(): String = if (isBlank()) this else "$this,"
+fun String.comma(): String = if (isBlank()) this else "$this,"
