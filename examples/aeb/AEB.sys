@@ -23,13 +23,13 @@ contract AEBLogic_Spec {
     input stop : bool
     output FCWactivate, decel, AEBstatus : int
 
-    sTANDBY -> sTANDBY :: "!(abs(TTC) < FCWtime & TTC >= 0)" ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate == 0sd32_0"
-    sTANDBY -> WARN    :: "abs(TTC) < FCWtime & TTC >= 0"   ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate == 0sd32_1"
-    WARN -> sTANDBY    :: "abs(TTC) >= (0sd32_2 * FCWtime)"  ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate == 0sd32_0"
-    WARN -> BREAK      :: "abs(TTC) < PB1time & TTC >= 0"  ==> "AEBstatus > 0sd32_0 & decel > 0sd32_0 & FCWactivate == 0sd32_1"
-    WARN -> WARN       :: "!(abs(TTC) < PB1time & TTC >= 0)" ==> "AEBstatus >= 0sd32_0 & decel >= 0sd32_0 & FCWactivate == 0sd32_1"
-    BREAK -> BREAK     :: "!stop & TTC>=0" ==> "AEBstatus > 0sd32_0 & decel > 0sd32_0 & FCWactivate == 0sd32_1"
-    BREAK -> sTANDBY   :: "stop  & TTC<0"  ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate == 0sd32_1"
+    sTANDBY -> sTANDBY :: "!(abs(TTC) < FCWtime & TTC >= 0sd32_0)" ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_0"
+    sTANDBY -> WARN    :: "abs(TTC) < FCWtime & TTC >= 0sd32_0"    ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_1"
+    WARN -> sTANDBY    :: "abs(TTC) >= (0sd32_2 * FCWtime)"        ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_0"
+    WARN -> BREAK      :: "abs(TTC) < PB1time & TTC >= 0sd32_0"    ==> "AEBstatus > 0sd32_0 & decel > 0sd32_0 & FCWactivate = 0sd32_1"
+    WARN -> WARN       :: "!(abs(TTC) < PB1time & TTC >= 0sd32_0)" ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_1"
+    BREAK -> BREAK     :: "!stop & TTC>=0sd32_0" ==> "AEBstatus > 0sd32_0 & decel > 0sd32_0 & FCWactivate = 0sd32_1"
+    BREAK -> sTANDBY   :: "stop  & TTC<0sd32_0"  ==> "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_1"
 }
 
 reactor AEBLogic {
@@ -106,11 +106,11 @@ contract TTC_Spec {
     output collision : bool
     output TTC : int
 
-    init -> init :: " 0sd32_0 <= mioDistance
+    s1 -> s1 :: " 0sd32_0 <= mioDistance
                     &            mioDistance <= 0sd32_1024
                     & -0sd32_1024 <= mioVelocity
                     &                mioVelocity <= 0sd32_1024 "
-                    ==> " (collision = 0sd32_0 | collision = 0sd32_1)"
+                    ==> " (collision = ((mioDistance - headawayOffset) < 0sd32_2))"
 }
 
 reactor TTCCalculation {
@@ -134,7 +134,7 @@ contract STC {
     input egoVelocity : int
     output FCWStoppingTime, PB1StoppingTime, PB2StoppingTime, FBStoppingTime :int
 
-    init -> init :: "0sd32_0 <= PB1_DECEL & PB1_DECEL <= PB2_DECEL
+    s1 -> s1 :: "0sd32_0 <= PB1_DECEL & PB1_DECEL <= PB2_DECEL
                                & PB2_DECEL <= FB_DECEL
                                & 0sd32_0 <= egoVelocity"
                     ==>
@@ -162,7 +162,7 @@ reactor StoppingTimeCalculation {
 contract Gt_Spec {
     input  a : int
     output v : bool
-    init -> init :: "true" ==> "v = (a <= C1)"
+    s1 -> s1 :: "TRUE" ==> "v = (a <= C1)"
 }
 
 reactor Gt  {
@@ -177,20 +177,22 @@ reactor Gt  {
 contract AEBTop_Spec {
     input  mioDistance, mioVelocity, egoVelocity : int
     output collision, egoCarStop : bool
-    output FCWactivate, AEBStatus, deceleration : int
+    output FCWactivate, AEBstatus, deceleration : int
 
-    init -> init ::
+    s1 -> s1 ::
         " 0sd32_0 <= mioDistance & 0sd32_0 <= egoVelocity
+        & 0sd32_0 <= mioDistance & mioDistance <= 0sd32_1024
+        & -0sd32_1024 <= mioVelocity & mioVelocity <= 0sd32_1024
         " ==>
-        " AEBstatus > 0sd32_0 = decel > 0sd32_0
-        & FCWactivate = 0sd32_1 || FCWactivate == 0sd32_0
+        " (AEBstatus > 0sd32_0) = (deceleration > 0sd32_0)
+        & (FCWactivate = 0sd32_1) | (FCWactivate = 0sd32_0)
         & egoCarStop = (egoVelocity <= C1)"
 }
 
 reactor AEBTop {
     input  mioDistance, mioVelocity, egoVelocity : int
     output collision, egoCarStop : bool
-    output FCWactivate, AEBStatus, deceleration : int
+    output FCWactivate, AEBstatus, deceleration : int
 
     state logic : AEBLogic
     state ttc   : TTCCalculation
@@ -203,7 +205,7 @@ reactor AEBTop {
 
     logic.FCWactivate  -> self.FCWactivate
     logic.decel        -> self.deceleration
-    logic.AEBStatus    -> self.AEBStatus
+    logic.AEBstatus    -> self.AEBstatus
 
     self.mioDistance -> ttc.mioDistance
     self.mioVelocity -> ttc.mioVelocity

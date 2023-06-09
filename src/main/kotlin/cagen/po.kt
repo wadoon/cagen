@@ -59,13 +59,8 @@ class ImplPOMonitorSimplified(val model: Model, val system: System, val contract
 
 data class POTask(val taskName: String = "", val command: String = "")
 
-class ComposedValidPO(val system: System) : ProofObligation("PO_${system.name}_composition_valid") {
-    override fun createFiles(folder: Path): List<POTask> {
-        return listOf()
-    }
-}
 
-class ValidityPO(model: Model, val system: System, val contract: UseContract) :
+class ValidityPO(val model: Model, val system: System, val contract: UseContract) :
     ProofObligation("PO_${system.name}_composition_refine") {
     override fun createFiles(folder: Path): List<POTask> {
         val contracts = listOf(contract.contract) +
@@ -74,8 +69,8 @@ class ValidityPO(model: Model, val system: System, val contract: UseContract) :
         val filename = folder / "$name.smv"
 
         filename.writeText(
-                    SmvUtils.toSmv(system, contract)
-                    + "\n----\n" + contract.contract.toSmv() + "\n----\n"
+            SmvUtils.toSmv(model, system, contract)
+                    + "\n----\n" + SmvUtils.toSmv(model, contract.contract) + "\n----\n"
                     + "\n----\n" + createHistoryModules(contracts)
         )
 
@@ -137,7 +132,7 @@ private fun createHistoryModule(depth: Int, type: Type): String {
 }
 
 
-class ContractRefinementPO(model: Model, val contract: Contract, val refined: UseContract) :
+class ContractRefinementPO(val model: Model, val contract: Contract, val refined: UseContract) :
     ProofObligation("PO_${contract.name}_refines_${refined.contract.name}") {
     override fun createFiles(folder: Path): List<POTask> {
         val sub = contract.signature.all
@@ -155,7 +150,8 @@ class ContractRefinementPO(model: Model, val contract: Contract, val refined: Us
             SmvUtils.refinement(
                 contract,
                 refined
-            ) + "\n----\n" + contract.toSmv() + "\n----\n" + refined.contract.toSmv() + "\n----\n" + createHistoryModules(
+            ) + "\n----\n" + SmvUtils.toSmv(model, contract) + "\n----\n"
+                    + SmvUtils.toSmv(model, refined.contract) + "\n----\n" + createHistoryModules(
                 contract,
                 refined.contract
             )
@@ -182,7 +178,6 @@ class ContractRefinementPO(model: Model, val contract: Contract, val refined: Us
 
 private infix fun String.notin(map: List<Pair<String, IOPort>>): Boolean = map.find { it.first == this } == null
 
-private fun Contract.toSmv() = SmvUtils.toSmv(this)
 
 fun createProofObligations(model: Model): List<ProofObligation> {
     val obligations = mutableListOf<ProofObligation>()

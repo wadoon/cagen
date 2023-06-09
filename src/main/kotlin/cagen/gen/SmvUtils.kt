@@ -25,13 +25,13 @@ val Type.asSmvType: String
 
 
 object SmvUtils {
-    fun toSmv(contract: Contract): String {
+    fun toSmv(model: Model, contract: Contract): String {
         val name: String = contract.name
         val signature = contract.signature
         val states = contract.states
 
         val content = """
-    ${moduleHead(name, signature)}
+    ${moduleHead(name, signature, model.globalDefines)}
     VAR
     ${states.joinToString("\n") { "$it:boolean;" }}
     _error_:boolean;
@@ -45,8 +45,8 @@ object SmvUtils {
     STATE_IN_NEXT := ( ${states.joinToString(" | ") { "next($it)" }} );
     ${
             contract.contracts.joinToString("\n") {
-                "pre_${it.name} := ${it.pre};\n" +
-                        "post_${it.name} := ${it.post};\n" +
+                "pre_${it.name} := ${it.pre.toSmvExpr()};\n" +
+                        "post_${it.name} := ${it.post.toSmvExpr()};\n" +
                         "${it.name} := pre_${it.name} & post_${it.name};\n"
             }
         }
@@ -95,8 +95,8 @@ object SmvUtils {
         }
 
 
-    fun inv_module(name: String, signature: Signature, pre: String, post: String) = """
-    ${moduleHead(name, signature)}
+    fun inv_module(name: String, signature: Signature, pre: String, post: String, model: Model) = """
+    ${moduleHead(name, signature, model.globalDefines)}
     DEFINE
         ASSUMPTION := $pre;
         GUARANTEE := $post;
@@ -104,17 +104,21 @@ object SmvUtils {
     INVARSPEC ASSUMPTION -> GUARANTEE;
     """.trimIndent()
 
-    fun moduleHead(name: String, signature: Signature) = """
+    fun moduleHead(name: String, signature: Signature, globalDefines: MutableList<Variable>) = """
         MODULE ${name}(
         -- INPUTS
         ${signature.inputs.joinToString(", ") { it.name }.comma()}
         -- OUTPUTS
         ${signature.outputs.joinToString(", ") { it.name }}
         )
+        ---- GLOBALS
+        DEFINE
+        ${globalDefines.joinToString("\n") { "    ${it.name} := ${it.initValue.trim('"')};" }}
+        ----
     """.trimIndent()
 
-    fun ltl_module(name: String, signature: Signature, pre: String, post: String) = """
-        ${moduleHead(name, signature)}
+    fun ltl_module(name: String, signature: Signature, pre: String, post: String, model: Model) = """
+        ${moduleHead(name, signature, model.globalDefines)}
         DEFINE
             ASSUMPTION := $pre;
             GUARANTEE := $post;
@@ -162,14 +166,14 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
 """.trimIndent()
     }
 
-    fun toSmv(system: System, contract: UseContract): String = with(system) {
+    fun toSmv(model: Model, system: System, contract: UseContract): String = with(system) {
         val inputvars = arrayListOf<Variable>()
 
         fun applySubst(v: Variable): String {
             val ioPort = contract.variableMap.find {
                 it.first == v.name
             }
-            return ioPort?.second?.portName ?: v.name
+            return "self_" + (ioPort?.second?.portName ?: v.name)
         }
 
         val inputs = (system.signature.inputs + system.signature.outputs)
@@ -184,6 +188,12 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
             append(
                 """
                 MODULE main
+                
+                ---- GLOBALS
+                DEFINE
+                ${model.globalDefines.joinToString("\n") { "    ${it.name} := ${it.initValue.trim('"')};" }}
+                ---- 
+                
                 VAR
                     contract
                         : ${contract.contract.name}(
@@ -216,7 +226,7 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
             append("\nIVAR\n")
             append(inputvars.joinToString("\n") { "    ${it.name} : ${it.type.asSmvType};" })
 
-            append("\nINVAR  -- encode the connection of variables\n")
+            append("\nDEFINE connections := -- encode the connection of variables\n")
             append(
                 system.connections.joinToString("\n&", "", ";") {
                     "${it.first.variable.name}_${it.first.portName} =${it.second.variable.name}_${it.second.portName}"
@@ -230,18 +240,21 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
                     .filter { (a, b) -> b.variable == inst && a.variable.name != "self" }
                     .map { (a, _) -> a.variable }
                     .toSet()
-                    .joinToString(" & ") { "${it.name}.GUARANTEE" }
+                    .joinToString(" & ") { "!${it.name}._error_" }
                     .ifEmpty { "TRUE" }
-                append("\nINVARSPEC contract.ASSUMPTION & $upstream -> ${downstream}.ASSUMPTION")
+                // LTLSPEC G (connections & contract._assume_ )
+                //        -> G ttc._assume_;
+                append("\nLTLSPEC G (connections & contract._assume_ & $upstream) -> G(${downstream}._assume_)")
             }
+            append("\nLTLSPEC G (connections & ${system.signature.instances.joinToString(" & ") { "!${it.name}._error_ & !${it.name}._assume_" }}) -> G(!contract._error_)")
 
-            append("\nINVARSPEC ${system.signature.instances.joinToString(" & ") { "${it.name}.GUARANTEE" }} -> contract.GUARANTEE")
 
-            append("\n")
-            append("-".repeat(80))
-            append("\n")
-
-            contracts.forEach { append(toSmv(it)) }
+            contracts.forEach {
+                append("\n")
+                append("-".repeat(80))
+                append("\n")
+                append(toSmv(model, it))
+            }
         }
     }
 
@@ -254,5 +267,8 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
         return "${instanceName}_${ioPort.second.portName}"
     }
 }
+
+private fun String.toSmvExpr(): String =
+    replace("abs(TTC)", "(case TTC < 0sd32_0: -TTC; TRUE : TTC; esac)")
 
 fun String.comma(): String = if (isBlank()) this else "$this,"
