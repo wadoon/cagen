@@ -1,0 +1,11 @@
+set default_trace_plugin 1
+set traces_show_defines_with_next 1
+
+
+read_model 
+flatten_hierarchy
+show_vars
+encode_variables
+build_boolean_model
+check_invar_ic3 -v 5
+quit

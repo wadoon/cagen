@@ -5,8 +5,13 @@ IVAR
     parent__y : signed word[32];
 
 VAR
-  parent : Interval(sub__cnt );
-  sub : UpDown(sub__tick, sub__cnt);
+  parent : Interval(
+        
+        sub__cnt );
+  
+  sub : UpDown(
+    sub__tick,
+    sub__cnt );
  
 INVARSPEC parent.ASSUMPTION -> sub.ASSUMPTION;
 INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
@@ -17,6 +22,10 @@ tick,
 -- OUTPUTS
 cnt
 )
+---- GLOBALS
+DEFINE
+
+----
     VAR
     uP:boolean;
 DOWN:boolean;
@@ -32,8 +41,7 @@ h_cnt_1 := h_cnt._1;
     DEFINE
     -- at least we have one follow-up state 
     STATE_IN_NEXT := ( next(uP) | next(DOWN) );
-
-pre_contract_trans_uP_uP_1 :=  tick;
+    pre_contract_trans_uP_uP_1 :=  tick;
 post_contract_trans_uP_uP_1 := -0sd32_128 < cnt & h_cnt_1 < cnt & cnt < 0sd32_128;
 contract_trans_uP_uP_1 := pre_contract_trans_uP_uP_1 & post_contract_trans_uP_uP_1;
 
@@ -57,12 +65,12 @@ pre_contract_trans_DOWN_uP_6 := tick;
 post_contract_trans_DOWN_uP_6 := cnt =-0sd32_128;
 contract_trans_DOWN_uP_6 := pre_contract_trans_DOWN_uP_6 & post_contract_trans_DOWN_uP_6;
 
-    t_13 := uP & contract_trans_uP_uP_1;
-t_14 := uP & contract_trans_uP_uP_2;
-t_16 := DOWN & contract_trans_DOWN_DOWN_3;
-t_17 := DOWN & contract_trans_DOWN_DOWN_4;
-t_19 := uP & contract_trans_uP_DOWN_5;
-t_20 := DOWN & contract_trans_DOWN_uP_6;
+    t_12 := uP & contract_trans_uP_uP_1;
+t_13 := uP & contract_trans_uP_uP_2;
+t_15 := DOWN & contract_trans_DOWN_DOWN_3;
+t_16 := DOWN & contract_trans_DOWN_DOWN_4;
+t_18 := uP & contract_trans_uP_DOWN_5;
+t_19 := DOWN & contract_trans_DOWN_uP_6;
     VALID_PRE_COND := (uP & pre_contract_trans_uP_uP_1) | (uP & pre_contract_trans_uP_uP_2) | (DOWN & pre_contract_trans_DOWN_DOWN_3) | (DOWN & pre_contract_trans_DOWN_DOWN_4) | (uP & pre_contract_trans_uP_DOWN_5) | (DOWN & pre_contract_trans_DOWN_uP_6);
     VALID_POST_COND := (uP & post_contract_trans_uP_uP_1) | (uP & post_contract_trans_uP_uP_2) | (DOWN & post_contract_trans_DOWN_DOWN_3) | (DOWN & post_contract_trans_DOWN_DOWN_4) | (uP & post_contract_trans_uP_DOWN_5) | (DOWN & post_contract_trans_DOWN_uP_6);
     
@@ -73,8 +81,8 @@ t_20 := DOWN & contract_trans_DOWN_uP_6;
 
     init(uP) := TRUE;
 init(DOWN) := FALSE;
-    next(uP) := t_13 | t_14 | t_20;
-next(DOWN) := t_16 | t_17 | t_19;
+    next(uP) := t_12 | t_13 | t_19;
+next(DOWN) := t_15 | t_16 | t_18;
             
     init(_error_) := FALSE;
     next(_error_) := _error_ | -- either there was already an error condition 
@@ -93,6 +101,10 @@ next(DOWN) := t_16 | t_17 | t_19;
 -- OUTPUTS
 y
 )
+---- GLOBALS
+DEFINE
+
+----
     VAR
     a:boolean;
     _error_:boolean;
@@ -131,9 +143,9 @@ contract_trans_a_a_0 := pre_contract_trans_a_a_0 & post_contract_trans_a_a_0;
     init(_assume_) := FALSE;
     next(_assume_) := _assume_ | (! STATE_IN_NEXT  & ! VALID_PRE_COND & !_error_); -- and the reason is all pre-condition will be violated
 ----
-MODULE History_int_1(input) 
-VAR _1 : signed word[32];
-DEFINE _0 := input;
-ASSIGN
-init(_1) := 0sd32_0;
+            MODULE History_int_1(input) 
+            VAR _1 : signed word[32];
+            DEFINE _0 := input;
+            ASSIGN
+            init(_1) := 0sd32_0;
 next(_1) := _0;

@@ -1,4 +1,4 @@
-CBMC_PARAM=--unwind 256
+CBMC_PARAM=--unwind 256 --external-sat-solver ~/work/kissat/build/kissat
 CBMC=cbmc $(CBMC_PARAM)
 LTLCHECK=/home/weigl/share/nuXmv-2.0.0-Linux/bin/nuXmv -source ltl.xmv
 SEAHORN="./seahorn.sh"
