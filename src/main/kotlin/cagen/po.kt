@@ -119,7 +119,7 @@ private fun createHistoryModule(depth: Int, type: Type): String {
     }
 
     val assigns = (1..depth).joinToString("\n") {
-        "next(_${it}) := _${it - 1};"
+        "init(_${it}) := 0sd32_0;\nnext(_${it}) := _${it - 1};"
     }
 
     return """

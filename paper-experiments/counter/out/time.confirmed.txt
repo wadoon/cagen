@@ -1,0 +1,8 @@
+0.12,0.01,0.10,98%,"/home/weigl/share/nuXmv-2.0.0-Linux/bin/nuXmv -source ic3.xmv PO_UpDown_refines_Interval.smv"
+0.12,0.02,0.09,98%,"/home/weigl/share/nuXmv-2.0.0-Linux/bin/nuXmv -source ic3.xmv PO_UpDown_refines_Interval.smv"
+0.12,0.03,0.09,98%,"/home/weigl/share/nuXmv-2.0.0-Linux/bin/nuXmv -source ic3.xmv PO_UpDown_refines_Interval.smv"
+
+91.82,0.28,91.08,99%,"cbmc --unwind 256 --external-sat-solver ~/work/kissat/build/kissat PO_Counter_fulfills_UpDown_simple.c"
+85.69,0.26,85.12,99%,"cbmc --unwind 256 --external-sat-solver ~/work/kissat/build/kissat PO_Counter_fulfills_UpDown_simple.c"
+87.30,0.25,86.69,99%,"cbmc --unwind 256 --external-sat-solver ~/work/kissat/build/kissat PO_Counter_fulfills_UpDown_simple.c"
+

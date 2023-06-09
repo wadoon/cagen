@@ -66,30 +66,36 @@ _assume_ =  _assume_ || (!STATE_IN_NEXT && !VALID_PRE_COND);
 bool sys_tick;
 int sys_val;
 bool sys_down;
-void init_sys_CounterBroken() {
+void init_sys_Counter() {
 sys_tick = 0;
 sys_val = 0;
 sys_down = 0;
 }
-void next_sys_CounterBroken() {
+void next_sys_Counter() {
 bool tick = sys_tick;
 int val = sys_val;
 bool down = sys_down;
 
-        if(!down) val += 1;
-        else      val -= 1;
+        if(tick) {
+        if(!down) {
+            val += 1;
+        } else {
+            val -= 1;
+        }
+
         if(val == 128 || val == -128) down = !down;
+        }
     
 sys_tick = tick;
 sys_val = val;
 sys_down = down;
 }
 void main() {
-init_sys_CounterBroken();
+init_sys_Counter();
 init_UpDown();
 while(true) {
 sys_tick = nondet_bool();
-next_sys_CounterBroken();
+next_sys_Counter();
 cnt = sys_val;
 tick = sys_tick;
 next_UpDown();
