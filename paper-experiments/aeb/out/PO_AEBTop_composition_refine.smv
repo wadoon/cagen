@@ -1,0 +1,393 @@
+
+                MODULE main
+                
+                ---- GLOBALS
+                DEFINE
+                    PB1_DECEL := 0sd32_5;
+    PB2_DECEL := 0sd32_10;
+    FB_DECEL := 0sd32_15;
+    C1 := 0sd32_1;
+    headawayOffset := 0sd32_3;
+    reactTime := 0sd32_2;
+                ---- 
+                
+                VAR
+                    contract
+                        : AEBTop_Spec(
+                            self_mioDistance, self_mioVelocity, self_egoVelocity,
+                            self_collision, self_egoCarStop, self_FCWactivate, self_AEBstatus, self_deceleration);
+                
+                IVAR
+                        self_mioDistance : signed word[32];
+    self_mioVelocity : signed word[32];
+    self_egoVelocity : signed word[32];
+    self_collision : boolean;
+    self_egoCarStop : boolean;
+    self_FCWactivate : signed word[32];
+    self_AEBstatus : signed word[32];
+    self_deceleration : signed word[32];
+                    
+                VAR     logic : AEBLogic_Spec(logic_TTC, logic_FCWtime, logic_PB1time, logic_PB2time, logic_FBtime, logic_stop, logic_FCWactivate, logic_decel, logic_AEBstatus);
+    ttc : TTC_Spec(ttc_mioDistance, ttc_mioVelocity, ttc_collision, ttc_TTC);
+    stc : STC(stc_egoVelocity, stc_FCWStoppingTime, stc_PB1StoppingTime, stc_PB2StoppingTime, stc_FBStoppingTime);
+    gt : Gt_Spec(gt_a, gt_v);
+
+IVAR
+    logic_TTC : signed word[32];
+    logic_FCWtime : signed word[32];
+    logic_PB1time : signed word[32];
+    logic_PB2time : signed word[32];
+    logic_FBtime : signed word[32];
+    logic_stop : boolean;
+    logic_FCWactivate : signed word[32];
+    logic_decel : signed word[32];
+    logic_AEBstatus : signed word[32];
+    ttc_mioDistance : signed word[32];
+    ttc_mioVelocity : signed word[32];
+    ttc_collision : boolean;
+    ttc_TTC : signed word[32];
+    stc_egoVelocity : signed word[32];
+    stc_FCWStoppingTime : signed word[32];
+    stc_PB1StoppingTime : signed word[32];
+    stc_PB2StoppingTime : signed word[32];
+    stc_FBStoppingTime : signed word[32];
+    gt_a : signed word[32];
+    gt_v : boolean;
+DEFINE connections := -- encode the connection of variables
+logic_FCWactivate =self_FCWactivate
+&logic_decel =self_deceleration
+&logic_AEBstatus =self_AEBstatus
+&self_mioDistance =ttc_mioDistance
+&self_mioVelocity =ttc_mioVelocity
+&self_egoVelocity =stc_egoVelocity
+&self_egoVelocity =gt_a
+&gt_v =self_egoCarStop
+&gt_v =logic_stop
+&ttc_TTC =logic_TTC
+&ttc_collision =self_collision
+&stc_FCWStoppingTime =logic_FCWtime
+&stc_PB1StoppingTime =logic_PB1time
+&stc_PB2StoppingTime =logic_PB2time
+&stc_FBStoppingTime =logic_FBtime;
+LTLSPEC G (connections & contract._assume_ & !gt._error_ & !ttc._error_ & !stc._error_) -> G(logic._assume_)
+LTLSPEC G (connections & contract._assume_ & TRUE) -> G(ttc._assume_)
+LTLSPEC G (connections & contract._assume_ & TRUE) -> G(stc._assume_)
+LTLSPEC G (connections & contract._assume_ & TRUE) -> G(gt._assume_)
+LTLSPEC G (connections & !logic._error_ & !logic._assume_ & !ttc._error_ & !ttc._assume_ & !stc._error_ & !stc._assume_ & !gt._error_ & !gt._assume_) -> G(!contract._error_)
+--------------------------------------------------------------------------------
+        MODULE AEBLogic_Spec(
+    -- INPUTS
+    TTC, FCWtime, PB1time, PB2time, FBtime, stop,
+    -- OUTPUTS
+    FCWactivate, decel, AEBstatus
+    )
+    ---- GLOBALS
+    DEFINE
+        PB1_DECEL := 0sd32_5;
+PB2_DECEL := 0sd32_10;
+FB_DECEL := 0sd32_15;
+C1 := 0sd32_1;
+headawayOffset := 0sd32_3;
+reactTime := 0sd32_2;
+    ----
+    VAR
+    sTANDBY:boolean;
+WARN:boolean;
+BREAK:boolean;
+    _error_:boolean;
+    _final_:boolean;
+    _assume_:boolean;
+
+    
+
+    DEFINE
+    -- at least we have one follow-up state 
+    STATE_IN_NEXT := ( next(sTANDBY) | next(WARN) | next(BREAK) );
+    pre_contract_trans_sTANDBY_sTANDBY_0 := !((case TTC < 0sd32_0: -TTC; TRUE : TTC; esac) < FCWtime & TTC >= 0sd32_0);
+post_contract_trans_sTANDBY_sTANDBY_0 := AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_0;
+contract_trans_sTANDBY_sTANDBY_0 := pre_contract_trans_sTANDBY_sTANDBY_0 & post_contract_trans_sTANDBY_sTANDBY_0;
+
+pre_contract_trans_sTANDBY_WARN_1 := (case TTC < 0sd32_0: -TTC; TRUE : TTC; esac) < FCWtime & TTC >= 0sd32_0;
+post_contract_trans_sTANDBY_WARN_1 := AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_1;
+contract_trans_sTANDBY_WARN_1 := pre_contract_trans_sTANDBY_WARN_1 & post_contract_trans_sTANDBY_WARN_1;
+
+pre_contract_trans_WARN_sTANDBY_2 := (case TTC < 0sd32_0: -TTC; TRUE : TTC; esac) >= (0sd32_2 * FCWtime);
+post_contract_trans_WARN_sTANDBY_2 := AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_0;
+contract_trans_WARN_sTANDBY_2 := pre_contract_trans_WARN_sTANDBY_2 & post_contract_trans_WARN_sTANDBY_2;
+
+pre_contract_trans_WARN_BREAK_3 := (case TTC < 0sd32_0: -TTC; TRUE : TTC; esac) < PB1time & TTC >= 0sd32_0;
+post_contract_trans_WARN_BREAK_3 := AEBstatus > 0sd32_0 & decel > 0sd32_0 & FCWactivate = 0sd32_1;
+contract_trans_WARN_BREAK_3 := pre_contract_trans_WARN_BREAK_3 & post_contract_trans_WARN_BREAK_3;
+
+pre_contract_trans_WARN_WARN_4 := !((case TTC < 0sd32_0: -TTC; TRUE : TTC; esac) < PB1time & TTC >= 0sd32_0);
+post_contract_trans_WARN_WARN_4 := AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_1;
+contract_trans_WARN_WARN_4 := pre_contract_trans_WARN_WARN_4 & post_contract_trans_WARN_WARN_4;
+
+pre_contract_trans_BREAK_BREAK_5 := !stop & TTC>=0sd32_0;
+post_contract_trans_BREAK_BREAK_5 := AEBstatus > 0sd32_0 & decel > 0sd32_0 & FCWactivate = 0sd32_1;
+contract_trans_BREAK_BREAK_5 := pre_contract_trans_BREAK_BREAK_5 & post_contract_trans_BREAK_BREAK_5;
+
+pre_contract_trans_BREAK_sTANDBY_6 := stop  & TTC<0sd32_0;
+post_contract_trans_BREAK_sTANDBY_6 := AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_1;
+contract_trans_BREAK_sTANDBY_6 := pre_contract_trans_BREAK_sTANDBY_6 & post_contract_trans_BREAK_sTANDBY_6;
+
+    t_26 := sTANDBY & contract_trans_sTANDBY_sTANDBY_0;
+t_27 := sTANDBY & contract_trans_sTANDBY_WARN_1;
+t_28 := WARN & contract_trans_WARN_sTANDBY_2;
+t_29 := WARN & contract_trans_WARN_BREAK_3;
+t_30 := WARN & contract_trans_WARN_WARN_4;
+t_31 := BREAK & contract_trans_BREAK_BREAK_5;
+t_32 := BREAK & contract_trans_BREAK_sTANDBY_6;
+    VALID_PRE_COND := (sTANDBY & pre_contract_trans_sTANDBY_sTANDBY_0) | (sTANDBY & pre_contract_trans_sTANDBY_WARN_1) | (WARN & pre_contract_trans_WARN_sTANDBY_2) | (WARN & pre_contract_trans_WARN_BREAK_3) | (WARN & pre_contract_trans_WARN_WARN_4) | (BREAK & pre_contract_trans_BREAK_BREAK_5) | (BREAK & pre_contract_trans_BREAK_sTANDBY_6);
+    VALID_POST_COND := (sTANDBY & post_contract_trans_sTANDBY_sTANDBY_0) | (sTANDBY & post_contract_trans_sTANDBY_WARN_1) | (WARN & post_contract_trans_WARN_sTANDBY_2) | (WARN & post_contract_trans_WARN_BREAK_3) | (WARN & post_contract_trans_WARN_WARN_4) | (BREAK & post_contract_trans_BREAK_BREAK_5) | (BREAK & post_contract_trans_BREAK_sTANDBY_6);
+    
+    ASSUMPTION := !next(_assume_);
+    GUARANTEE := !next(_error_);
+    
+    ASSIGN
+
+    init(sTANDBY) := TRUE;
+init(WARN) := FALSE;
+init(BREAK) := FALSE;
+    next(sTANDBY) := t_26 | t_28 | t_32;
+next(WARN) := t_27 | t_30;
+next(BREAK) := t_29 | t_31;
+            
+    init(_error_) := FALSE;
+    next(_error_) := _error_ | -- either there was already an error condition 
+                        ( ! STATE_IN_NEXT -- not activate state 
+                        & VALID_PRE_COND) ; -- and the reason is a post-condition violation (there exists a valid pre-condition)
+
+    init(_final_) := FALSE;
+    next(_final_) := FALSE;
+
+    init(_assume_) := FALSE;
+    next(_assume_) := _assume_ | (! STATE_IN_NEXT  & ! VALID_PRE_COND & !_error_); -- and the reason is all pre-condition will be violated
+--------------------------------------------------------------------------------
+        MODULE TTC_Spec(
+    -- INPUTS
+    mioDistance, mioVelocity,
+    -- OUTPUTS
+    collision, TTC
+    )
+    ---- GLOBALS
+    DEFINE
+        PB1_DECEL := 0sd32_5;
+PB2_DECEL := 0sd32_10;
+FB_DECEL := 0sd32_15;
+C1 := 0sd32_1;
+headawayOffset := 0sd32_3;
+reactTime := 0sd32_2;
+    ----
+    VAR
+    s1:boolean;
+    _error_:boolean;
+    _final_:boolean;
+    _assume_:boolean;
+
+    
+
+    DEFINE
+    -- at least we have one follow-up state 
+    STATE_IN_NEXT := ( next(s1) );
+    pre_contract_trans_s1_s1_7 :=  0sd32_0 <= mioDistance
+                    &            mioDistance <= 0sd32_1024
+                    & -0sd32_1024 <= mioVelocity
+                    &                mioVelocity <= 0sd32_1024 ;
+post_contract_trans_s1_s1_7 :=  (collision = ((mioDistance - headawayOffset) < 0sd32_2));
+contract_trans_s1_s1_7 := pre_contract_trans_s1_s1_7 & post_contract_trans_s1_s1_7;
+
+    t_109 := s1 & contract_trans_s1_s1_7;
+    VALID_PRE_COND := (s1 & pre_contract_trans_s1_s1_7);
+    VALID_POST_COND := (s1 & post_contract_trans_s1_s1_7);
+    
+    ASSUMPTION := !next(_assume_);
+    GUARANTEE := !next(_error_);
+    
+    ASSIGN
+
+    init(s1) := TRUE;
+    next(s1) := t_109;
+            
+    init(_error_) := FALSE;
+    next(_error_) := _error_ | -- either there was already an error condition 
+                        ( ! STATE_IN_NEXT -- not activate state 
+                        & VALID_PRE_COND) ; -- and the reason is a post-condition violation (there exists a valid pre-condition)
+
+    init(_final_) := FALSE;
+    next(_final_) := FALSE;
+
+    init(_assume_) := FALSE;
+    next(_assume_) := _assume_ | (! STATE_IN_NEXT  & ! VALID_PRE_COND & !_error_); -- and the reason is all pre-condition will be violated
+--------------------------------------------------------------------------------
+        MODULE STC(
+    -- INPUTS
+    egoVelocity,
+    -- OUTPUTS
+    FCWStoppingTime, PB1StoppingTime, PB2StoppingTime, FBStoppingTime
+    )
+    ---- GLOBALS
+    DEFINE
+        PB1_DECEL := 0sd32_5;
+PB2_DECEL := 0sd32_10;
+FB_DECEL := 0sd32_15;
+C1 := 0sd32_1;
+headawayOffset := 0sd32_3;
+reactTime := 0sd32_2;
+    ----
+    VAR
+    s1:boolean;
+    _error_:boolean;
+    _final_:boolean;
+    _assume_:boolean;
+
+    
+
+    DEFINE
+    -- at least we have one follow-up state 
+    STATE_IN_NEXT := ( next(s1) );
+    pre_contract_trans_s1_s1_8 := 0sd32_0 <= PB1_DECEL & PB1_DECEL <= PB2_DECEL
+                               & PB2_DECEL <= FB_DECEL
+                               & 0sd32_0 <= egoVelocity;
+post_contract_trans_s1_s1_8 := reactTime <= FCWStoppingTime      &
+                     0sd32_0 <= FBStoppingTime          &
+                     FBStoppingTime <= PB1StoppingTime &
+                     PB1StoppingTime <= PB2StoppingTime;
+contract_trans_s1_s1_8 := pre_contract_trans_s1_s1_8 & post_contract_trans_s1_s1_8;
+
+    t_137 := s1 & contract_trans_s1_s1_8;
+    VALID_PRE_COND := (s1 & pre_contract_trans_s1_s1_8);
+    VALID_POST_COND := (s1 & post_contract_trans_s1_s1_8);
+    
+    ASSUMPTION := !next(_assume_);
+    GUARANTEE := !next(_error_);
+    
+    ASSIGN
+
+    init(s1) := TRUE;
+    next(s1) := t_137;
+            
+    init(_error_) := FALSE;
+    next(_error_) := _error_ | -- either there was already an error condition 
+                        ( ! STATE_IN_NEXT -- not activate state 
+                        & VALID_PRE_COND) ; -- and the reason is a post-condition violation (there exists a valid pre-condition)
+
+    init(_final_) := FALSE;
+    next(_final_) := FALSE;
+
+    init(_assume_) := FALSE;
+    next(_assume_) := _assume_ | (! STATE_IN_NEXT  & ! VALID_PRE_COND & !_error_); -- and the reason is all pre-condition will be violated
+--------------------------------------------------------------------------------
+        MODULE Gt_Spec(
+    -- INPUTS
+    a,
+    -- OUTPUTS
+    v
+    )
+    ---- GLOBALS
+    DEFINE
+        PB1_DECEL := 0sd32_5;
+PB2_DECEL := 0sd32_10;
+FB_DECEL := 0sd32_15;
+C1 := 0sd32_1;
+headawayOffset := 0sd32_3;
+reactTime := 0sd32_2;
+    ----
+    VAR
+    s1:boolean;
+    _error_:boolean;
+    _final_:boolean;
+    _assume_:boolean;
+
+    
+
+    DEFINE
+    -- at least we have one follow-up state 
+    STATE_IN_NEXT := ( next(s1) );
+    pre_contract_trans_s1_s1_9 := TRUE;
+post_contract_trans_s1_s1_9 := v = (a <= C1);
+contract_trans_s1_s1_9 := pre_contract_trans_s1_s1_9 & post_contract_trans_s1_s1_9;
+
+    t_165 := s1 & contract_trans_s1_s1_9;
+    VALID_PRE_COND := (s1 & pre_contract_trans_s1_s1_9);
+    VALID_POST_COND := (s1 & post_contract_trans_s1_s1_9);
+    
+    ASSUMPTION := !next(_assume_);
+    GUARANTEE := !next(_error_);
+    
+    ASSIGN
+
+    init(s1) := TRUE;
+    next(s1) := t_165;
+            
+    init(_error_) := FALSE;
+    next(_error_) := _error_ | -- either there was already an error condition 
+                        ( ! STATE_IN_NEXT -- not activate state 
+                        & VALID_PRE_COND) ; -- and the reason is a post-condition violation (there exists a valid pre-condition)
+
+    init(_final_) := FALSE;
+    next(_final_) := FALSE;
+
+    init(_assume_) := FALSE;
+    next(_assume_) := _assume_ | (! STATE_IN_NEXT  & ! VALID_PRE_COND & !_error_); -- and the reason is all pre-condition will be violated
+----
+        MODULE AEBTop_Spec(
+    -- INPUTS
+    mioDistance, mioVelocity, egoVelocity,
+    -- OUTPUTS
+    collision, egoCarStop, FCWactivate, AEBstatus, deceleration
+    )
+    ---- GLOBALS
+    DEFINE
+        PB1_DECEL := 0sd32_5;
+PB2_DECEL := 0sd32_10;
+FB_DECEL := 0sd32_15;
+C1 := 0sd32_1;
+headawayOffset := 0sd32_3;
+reactTime := 0sd32_2;
+    ----
+    VAR
+    s1:boolean;
+    _error_:boolean;
+    _final_:boolean;
+    _assume_:boolean;
+
+    
+
+    DEFINE
+    -- at least we have one follow-up state 
+    STATE_IN_NEXT := ( next(s1) );
+    pre_contract_trans_s1_s1_10 :=  0sd32_0 <= mioDistance & 0sd32_0 <= egoVelocity
+        & 0sd32_0 <= mioDistance & mioDistance <= 0sd32_1024
+        & -0sd32_1024 <= mioVelocity & mioVelocity <= 0sd32_1024
+        ;
+post_contract_trans_s1_s1_10 :=  (AEBstatus > 0sd32_0) = (deceleration > 0sd32_0)
+        & (FCWactivate = 0sd32_1) | (FCWactivate = 0sd32_0)
+        & egoCarStop = (egoVelocity <= C1);
+contract_trans_s1_s1_10 := pre_contract_trans_s1_s1_10 & post_contract_trans_s1_s1_10;
+
+    t_182 := s1 & contract_trans_s1_s1_10;
+    VALID_PRE_COND := (s1 & pre_contract_trans_s1_s1_10);
+    VALID_POST_COND := (s1 & post_contract_trans_s1_s1_10);
+    
+    ASSUMPTION := !next(_assume_);
+    GUARANTEE := !next(_error_);
+    
+    ASSIGN
+
+    init(s1) := TRUE;
+    next(s1) := t_182;
+            
+    init(_error_) := FALSE;
+    next(_error_) := _error_ | -- either there was already an error condition 
+                        ( ! STATE_IN_NEXT -- not activate state 
+                        & VALID_PRE_COND) ; -- and the reason is a post-condition violation (there exists a valid pre-condition)
+
+    init(_final_) := FALSE;
+    next(_final_) := FALSE;
+
+    init(_assume_) := FALSE;
+    next(_assume_) := _assume_ | (! STATE_IN_NEXT  & ! VALID_PRE_COND & !_error_); -- and the reason is all pre-condition will be violated
+----
+
+----
