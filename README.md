@@ -60,17 +60,44 @@ reactor Counter  {
 }
 ```
 
-A composed system instead is given by sub-systems and their interconnections.
+A composed system instead is given by sub-systems and their interconnections. Sub-systems are state variables, which input and output variables can be connected.
 
 ```
 reactor Top {
+   state sub1 : Sub
+   state sub2 : Sub
 
+   input in : int
+   output out : int
 
+   in -> sub1.in
+   sub1.out -> sub1.in
+   sub2.out -> out
+}
+
+reactor Sub {
+   input in : int
+   output out : int
+   {= out = 2*in; =}
 }
 ```
 
-
 ## Tool usage
 
+You can compile the tool with gradle: 
+```sh
+$ gradle shadowJar
+```
+and then you can run the proof obligation generation with:
+```sh
+$ java -jar build/libs/cagen-all.jar verify --output out Counter.sys
+```
+which generates the proof obligations into the `out/` directory to discharged with cbmc, seahorn or nuXmv. 
 
 ## Case Study: iFM
+
+The case study for the iFM paper is archived in `paper-experiments/`, where you can find `Counter` and `aeb` with their proof obligations, and a make file for discharging the proof. 
+
+To run the case study, you should install `cbmc`, and `nuXmv`. Seahorn is used via `podman` (a docker variant for non-root use).  
+Note that the time measuring of `podman` (`/usr/bin/time podman ...`) does not return the true value of cpu time. 
+
