@@ -94,9 +94,9 @@ $ java -jar build/libs/cagen-all.jar verify --output out Counter.sys
 ```
 which generates the proof obligations into the `out/` directory to discharged with cbmc, seahorn or nuXmv. 
 
-## Case Study: iFM
+## Case Study
 
-The case study for the iFM paper is archived in `paper-experiments/`, where you can find `Counter` and `aeb` with their proof obligations, and a make file for discharging the proof. 
+The case study for the paper is archived in `paper-experiments/`, where you can find `Counter` and `aeb` with their proof obligations, and a make file for discharging the proof. 
 
 To run the case study, you should install `cbmc`, and `nuXmv`. Seahorn is used via `podman` (a docker variant for non-root use).  
 Note that the time measuring of `podman` (`/usr/bin/time podman ...`) does not return the true value of cpu time. 
