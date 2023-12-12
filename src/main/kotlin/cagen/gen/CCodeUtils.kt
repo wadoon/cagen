@@ -68,7 +68,10 @@ object CCodeUtils {
         val name = system.name
         val headerContent = """
             #pragma once
-            #include <stdbool.h>
+            #include <stdbool.h>            
+            #define TRUE true
+            #define FALSE false
+            
             ${
             signature.instances.map { it.type.name }.toSet()
                 .joinToString("\n") { "#include \"$it.h\"" }
@@ -121,7 +124,9 @@ object CCodeUtils {
             #pragma once
             
             #include <stdbool.h>
-
+            #define TRUE true
+            #define FALSE false
+            
             typedef struct ${contract.name}_state {
               ${signature.inputs.declvars()}
               ${signature.outputs.declvars()}
@@ -199,6 +204,9 @@ object CCodeUtils {
         val cfile =
             """ 
                 #include <stdbool.h>
+                #define TRUE true
+                #define FALSE false
+            
                 #include <assert.h>
                 #include "${contract.contract.name}.c"
                 #include "${system.name}.c"

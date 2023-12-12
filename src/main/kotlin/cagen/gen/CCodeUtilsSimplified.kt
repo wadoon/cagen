@@ -152,6 +152,8 @@ object CCodeUtilsSimplified {
             """
             #include <stdbool.h>
             #include <stdint.h>
+            #define TRUE true
+            #define FALSE false
             
             #ifdef SEAHORN
             #include "seahorn/seahorn.h"
