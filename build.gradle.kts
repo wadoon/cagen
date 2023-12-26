@@ -26,8 +26,8 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.1")
 
-    implementation("org.antlr:antlr4-runtime:4.13.0")
-    antlr("org.antlr:antlr4:4.13.0")
+    implementation("org.antlr:antlr4-runtime:4.13.1")
+    antlr("org.antlr:antlr4:4.13.1")
 }
 
 val compileJava by tasks.existing(JavaCompile::class)
