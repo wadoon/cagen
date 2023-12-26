@@ -1,10 +1,10 @@
 package cagen.gen
 
 import cagen.*
+import cagen.cagen.expr.SMVExpr
 import cagen.cagen.gen.CCodeUtilsSimplified.toC
 import cagen.cagen.gen.CCodeUtilsSimplified.toCExpr
 import cagen.cagen.gen.CCodeUtilsSimplified.toCValue
-import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.div
 import kotlin.io.path.writeText
@@ -273,7 +273,7 @@ private fun Pair<String, List<CATransition>>.transitionAssignment(): String = bu
     append(";")
 }
 
-internal fun String.inState(stateVars: List<Variable>, prefix: String = "state->"): String {
+internal fun SMVExpr.inState(stateVars: List<Variable>, prefix: String = "state->"): String {
     var result = this.toCExpr()
     stateVars.forEach {
         result = result.replace("\\b${it.name}\\b".toRegex(), "$prefix${it.name}")

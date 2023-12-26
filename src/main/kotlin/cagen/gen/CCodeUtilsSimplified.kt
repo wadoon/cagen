@@ -1,6 +1,8 @@
 package cagen.cagen.gen
 
 import cagen.*
+import cagen.cagen.expr.SMVExpr
+import cagen.expr.CPrinter
 import cagen.gen.CCodeUtils
 import java.io.PrintWriter
 
@@ -50,11 +52,7 @@ object CCodeUtilsSimplified {
                 }
             }
 
-            /*states.forEach { name ->
-                out.println("_$name = $name;")
-            }*/
-
-            fun assignb(v: String, e: String) = out.println("bool $v = ${e.toCExpr()};")
+            fun assignb(v: String, e: SMVExpr) = out.println("bool $v = ${e.toCExpr()};")
 
 
             contracts.forEach {
@@ -141,11 +139,13 @@ object CCodeUtilsSimplified {
         }
     }
 
-    fun String.toCExpr() = this.replace("0sd32_", "")
+    fun SMVExpr.toCExpr() = CPrinter.toString(this)
+        /*this.replace("0sd32_", "")
             // matches a = without a leading <, >, = or = as a suffix
         .replace("(?<!(<|>|=))=(?!=)".toRegex(), "==")
         .replace("&", "&&")
         .replace("|", "||")
+         */
 
     fun header(out: PrintWriter, model: Model) {
         out.println(

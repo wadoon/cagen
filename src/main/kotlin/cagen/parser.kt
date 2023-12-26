@@ -1,9 +1,12 @@
 package cagen
 
+import cagen.cagen.expr.*
 import cagen.parser.SystemDefBaseVisitor
 import cagen.parser.SystemDefLexer
 import cagen.parser.SystemDefParser
+import cagen.parser.SystemDefParser.ArrayaccessContext
 import cagen.parser.SystemDefParser.ConnectionContext
+import cagen.parser.SystemDefParser.FieldaccessContext
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
@@ -33,6 +36,14 @@ object ParserFacade {
     }
 
     fun loadFile(file: File) = interpret(parser(lexer(CharStreams.fromPath(file.toPath()))))
+    fun parseExpr(content: String): SMVExpr = parseExpr(CharStreams.fromString(content))
+
+    fun parseExpr(content: CharStream): SMVExpr = interpretExpr(parser(lexer(content)))
+
+    private fun interpretExpr(parser: SystemDefParser): SMVExpr {
+        val expr = parser.expr()
+        return expr.accept(Translator.ExpressionParser)
+    }
 
     private class ExceptionalErrorListener : ANTLRErrorListener {
         override fun syntaxError(
@@ -81,15 +92,9 @@ data class IOPort(val variable: Variable, val portName: String)
 
 private val self = Variable("self", BuiltInType("self"), "")
 
-data class Model(
-    val systems: MutableList<System> = arrayListOf<System>(),
-    val contracts: MutableList<Contract> = arrayListOf<Contract>(),
-    val globalDefines: MutableList<Variable> = arrayListOf<Variable>(),
-    var globalCode: String = ""
-)
-
 class Translator : SystemDefBaseVisitor<Unit>() {
     val model = Model()
+    var vvGuard: VVGuard = VVGuard.DEFAULT
 
     override fun visitModel(ctx: SystemDefParser.ModelContext) {
         model.globalCode = ctx.globalCode?.text?.let { cleanCode(it) } ?: ""
@@ -102,10 +107,40 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             val init = varctx.init?.text ?: "0"
             for (token in varctx.n) model.globalDefines.add(Variable(token.text, type, init))
         }
+        ctx.variants().forEach { it.accept(this) }
         ctx.contract().forEach { it.accept(this) }
         ctx.system().forEach { it.accept(this) }
     }
 
+    //region version and variants
+    override fun visitVariants(ctx: SystemDefParser.VariantsContext) {
+        val vf = VariantFamily()
+        ctx.Ident().forEach { vf.add(it.text) }
+        model.variants.add(vf)
+    }
+
+
+    fun version(ctx: SystemDefParser.VersionContext): Version = Version(ctx.text)
+
+    override fun visitVvguard(ctx: SystemDefParser.VvguardContext) {
+        vvGuard =
+            if (ctx.vvexpr().isEmpty()) VVGuard.DEFAULT
+            else VVGuard(ctx.vvexpr().map { vvexpr(it) })
+    }
+
+    fun vvexpr(ctx: SystemDefParser.VvexprContext): VVRange {
+        val a = versionOrVariant(ctx.vv(0)) ?: error("Could not find variant ${ctx.vv(0).text}")
+        return if (ctx.vv().size == 1) VVRange(a)
+        else {
+            val b = versionOrVariant(ctx.vv(1)) ?: error("Could not find variant ${ctx.vv(1).text}")
+            VVRange(a, b)
+        }
+    }
+
+    fun versionOrVariant(vv: SystemDefParser.VvContext) =
+        if (vv.version() != null) version(vv.version())
+        else model.findVariant(vv.text)
+    //end region
 
     override fun visitSystem(ctx: SystemDefParser.SystemContext) {
         val signature = parseIo(ctx.io())
@@ -134,7 +169,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         signature: Signature,
         self: Variable
     ): MutableList<Pair<String, IOPort>> =
-        if (!subst.isEmpty()) {
+        if (subst.isNotEmpty()) {
             subst.map {
                 val local = it.local.text
                 val outer = port(it.from, signature, self)
@@ -213,18 +248,24 @@ class Translator : SystemDefBaseVisitor<Unit>() {
 
     override fun visitAutomata(ctx: SystemDefParser.AutomataContext) {
         val localcontracts = ctx.prepost().associate {
-            it.name.text to PrePost(it.pre.text.trim('"'), it.post.text.trim('"'), it.name.text)
+            it.name.text to PrePost(
+                it.pre.asExpr(),
+                it.post.asExpr(),
+                it.name.text
+            )
         }
 
         val transitions = ctx.transition().map {
+            it.vvguard()?.accept(this)
+
             val contract =
                 if (it.contr != null) localcontracts[it.contr.text]
                 else PrePost(
-                    it.pre.text.trim('"'), it.post.text.trim('"'),
-                    "contract_trans_${it.from.text}_${it.to.text}_${counter.getAndIncrement()}"
+                    it.pre.asExpr(), it.post.asExpr(),
+                    "contract_trans_${it.from.text}_${it.to.text}_${PrePost.counter.getAndIncrement()}"
                 )
             contract ?: error("Could not find contract ${it.contr.text}")
-            CATransition("t_${it.start.line}", it.from.text, it.to.text, contract)
+            CATransition("t_${it.start.line}", it.from.text, it.to.text, vvGuard, contract)
         }
         println(transitions)
         model.contracts.add(
@@ -237,35 +278,63 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         history.map { it.n.text to it.INT().text.toInt() }
 
 
+    private fun SystemDefParser.ExprContext.asExpr() = this.accept(ExpressionParser)
+
+
     object ExpressionParser : SystemDefBaseVisitor<SMVExpr>() {
-        override fun visitStateExpr(ctx: SystemDefParser.StateExprContext): SMVExpr {
+        override fun visitExpr(ctx: SystemDefParser.ExprContext): SMVExpr {
             if (ctx.unaryop != null) {
                 return SUnaryExpression(
-                    if (ctx.unaryop.getText().equals("!"))
+                    if (ctx.unaryop.type == SystemDefParser.NOT)
                         SUnaryOperator.NEGATE
                     else
                         SUnaryOperator.MINUS,
-                    ctx.stateExpr(0).accept(this) as SMVExpr
+                    ctx.expr(0).accept(this) as SMVExpr
                 )
             }
 
-            return if (ctx.terminalAtom() != null) {
-                ctx.terminalAtom().accept(this) as SMVExpr
-            } else SBinaryExpression(
-                ctx.stateExpr(0).accept(this) as SMVExpr,
-                SBinaryOperator.findBySymbol(ctx.op.getText())!!,
-                ctx.stateExpr(1).accept(this) as SMVExpr
-            )
+            return when {
+                ctx.terminalAtom() != null ->
+                    ctx.terminalAtom().accept(this) as SMVExpr
+
+                ctx.QUESTION_MARK() != null ->
+                    SCaseExpression(
+                        mutableListOf(
+                            SCaseExpression.Case(
+                                ctx.expr(0).accept(this) as SMVExpr,
+                                ctx.expr(1).accept(this) as SMVExpr
+                            ),
+                            SCaseExpression.Case(
+                                SLiteral.TRUE,
+                                ctx.expr(2).accept(this) as SMVExpr
+                            )
+                        )
+                    )
+
+                else -> SBinaryExpression(
+                    ctx.expr(0).accept(this) as SMVExpr,
+                    SBinaryOperator.findBySymbol(ctx.op.text)!!,
+                    ctx.expr(1).accept(this) as SMVExpr
+                )
+            }
         }
 
+        override fun visitVariablewithprefix(ctx: SystemDefParser.VariablewithprefixContext): SMVExpr {
+            var variable: SMVExpr = SVariable(ctx.Ident().text)
+
+            for (varprefix in ctx.varprefix()) {
+                when (varprefix) {
+                    is ArrayaccessContext -> variable = SArrayAccess(variable, varprefix.index.accept(this))
+                    is FieldaccessContext -> variable = SFieldAccess(variable, SVariable(varprefix.dotted.text))
+                }
+            }
+
+
+            return variable
+        }
 
         override fun visitParen(ctx: SystemDefParser.ParenContext): SMVExpr {
-            return ctx.stateExpr().accept(this) as SMVExpr
-        }
-
-        override fun visitSetExpr(ctx: SystemDefParser.SetExprContext): SMVExpr {
-            throw IllegalStateException("not supported")
-            //        return super.visitSetExpr(ctx);
+            return ctx.expr().accept(this)
         }
 
         override fun visitWordValue(ctx: SystemDefParser.WordValueContext): SMVExpr {
@@ -300,28 +369,24 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             return SFunction(ctx.name.text, exprs)
         }
 
-        private fun getSMVExprs(ctx: SystemDefParser.FunctionExprContext): List<SMVExpr> {
-            return ctx.stateExpr().map { it.accept(this) as SMVExpr }
-        }
+        private fun getSMVExprs(ctx: SystemDefParser.FunctionExprContext): List<SMVExpr> =
+            ctx.expr().map { it.accept(this) }
 
-        override fun visitCasesExprAtom(ctx: SystemDefParser.CasesExprAtomContext): SMVExpr {
-            return super.visitCasesExprAtom(ctx)
-        }
+        override fun visitCasesExprAtom(ctx: SystemDefParser.CasesExprAtomContext): SMVExpr =
+            super.visitCasesExprAtom(ctx)
 
-        override fun visitArrayAccess(ctx: SystemDefParser.ArrayAccessContext): SMVExpr {
-            throw IllegalStateException("not supported")
-        }
+        override fun visitFieldaccess(ctx: SystemDefParser.FieldaccessContext): SMVExpr =
+            super.visitFieldaccess(ctx)
 
-        override fun visitVariableDotted(ctx: SystemDefParser.VariableDottedContext): SMVExpr {
-            throw IllegalStateException("not supported")
-        }
+        override fun visitArrayaccess(ctx: SystemDefParser.ArrayaccessContext): SMVExpr =
+            super.visitArrayaccess(ctx)
 
         override fun visitIntegerLiteral(ctx: SystemDefParser.IntegerLiteralContext): SMVExpr {
-            return SIntegerLiteral(BigInteger(ctx.value.getText()))
+            return SIntegerLiteral(BigInteger(ctx.value.text))
         }
 
         override fun visitFloatLiteral(ctx: SystemDefParser.FloatLiteralContext): SMVExpr {
-            return SFloatLiteral(BigDecimal(ctx.value.getText()))
+            return SFloatLiteral(BigDecimal(ctx.value.text))
         }
 
         override fun visitCaseBranch(ctx: SystemDefParser.CaseBranchContext): SMVExpr {
@@ -329,190 +394,4 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         }
     }
 }
-
-/*
-object Peg {
-val model = Symbol.rule("model") {
-    seq {
-        val sign = +char('+', '-').orDefault('+')
-        val digits = +DIGIT.oneOrMore().joinToString()
-        value { (sign.get + digits.get).toInt() }
-    }
-    include * (contract|system)* EOF;
-}
-include: 'include' STRING;
-
-contract : automata | invariant;
-
-automata: CONTRACT name=Ident LBRACE
-io*
-history*
-prepost*
-transition*
-use_contracts*
-RBRACE;
-
-prepost: CONTRACT name=Ident ':=' pre=STRING '==>' post=STRING;
-transition: from=Ident ARROW to=Ident '::' (contr=Ident| pre=STRING '==>' post=STRING);
-
-invariant: CONTRACT name=Ident LBRACE
-io*
-history*
-pre=STRING '==>' post=STRING
-use_contracts*
-RBRACE;
-
-system: REACTOR Ident LBRACE
-io*
-use_contracts*
-connection*
-reaction?
-RBRACE;
-
-connection: from=ioport ARROW
-(LPAREN (to+=ioport)+ RPAREN
-| to+=ioport)
-;
-val ioport = rule("ioport") {
-    seq {
-        val prefix = +(seq {
-            val inst = +ident
-            +char('.')
-            value { inst.get }
-        }.optional())
-        val port = +ident;
-        value { prefix.get.orNull() to port.get }
-    }
-}
-
-
-val use_contracts = rule("use_contracts") {
-    seq {
-        +literal("contract")
-        val uc = +use_contract.list()
-    }
-}
-
-val use_contract = rule("use_contract") {
-    seq {
-        val n = +ident
-        val s = +(seq<Map<String, IOPort>> {
-            +literal("[")
-            val s = +subst.list(COMMA)
-            +literal("]")
-            value { s.get }
-        }.optional())
-
-        value {
-            val contractName = n.get
-            val contract: Contract = components.find { it.name == contractName } as? Contract
-                ?: error("Could not find a contract with name $contractName")
-            val m = s.get.getOrElse {
-                val map = mutableMapOf<String, IOPort>()
-                //TODO traverse all pairs
-                map
-            }
-            UseContract(contract, m.toList().toMutableList())
-        }
-    }
-}
-
-val components = arrayListOf<Component>()
-lateinit var current: Component
-
-val subst = rule("subst") {
-    seq {
-        val local = +ident
-        +literal("<-")
-        val from = +ioport
-        value {
-            val (v, n) = from.get
-            val variable = v?.let { current.signature.get(it) } ?: self
-            local.get to IOPort(variable, n)
-        }
-    }
-}
-
-
-val io = Symbol.rule("io") {
-    seq {
-        val modifier = +(choice(
-            literal("input"),
-            literal("output"),
-            literal("state")
-        ))
-        val vars = +variable.list()
-        value {
-            modifier.get to vars.get.flatten()
-        }
-    }
-}
-
-val history = Symbol.rule("history") {
-    seq {
-        +literal("history")
-        val n = +ident
-        +char('(')
-        val depth = +int
-        +char(')')
-        value { n.get to depth.get }
-    }
-}
-
-val variable = Symbol.rule<List<Variable>>("variable") {
-    seq {
-        val name = +ident.list(separator = char(','), min = 1u)
-        +COLON
-        val type = ident
-        val init = +(seq<String> {
-            +literal(":=")
-            val s = +StringSym
-        })
-
-        value {
-            val t = Type()
-            val initValue = ""
-            name.get.map {
-                Variable(it, t, initValue)
-            }
-        }
-    }
-}
-
-val COMMA = char(',')
-val COLON = char(':')
-
-private val StringSym = Symbol.rule(name = "String", ignoreWS = false) {
-    not(char('"'))
-        .list(prefix = char('"'), postfix = char('"'))
-        .joinToString()
-}
-
-private val int = Symbol.rule(name = "int", ignoreWS = false) {
-    DIGIT.list(prefix = char('"'), postfix = char('"'))
-        .joinToString()
-        .mapPe { it.toInt() }
-}
-
-
-val reaction = Symbol.rule("reaction", ignoreWS = false) {
-    val start = literal("{=")
-    val end = literal("=}")
-    not(literal("=}"))
-        .list(prefix = start, postfix = end)
-        .joinToString()
-}
-
-
-private val ident = Symbol.rule(name = "ident", ignoreWS = true) {
-    char('0'..'z')
-        .oneOrMore()
-        .joinToString()
-}
-}
-
- */
-
-
-
 

@@ -1,9 +1,12 @@
 grammar SystemDef;
 
-// Parser
+model: include* defines? variants* globalCode=CODE? (contract|system)* EOF;
 
-model: include* defines? globalCode=CODE? (contract|system)* EOF;
 include: 'include' STRING;
+
+variants: 'variants' v+=Ident (COMMA? v+=Ident)* ;
+
+version: 'v' INT (DOT INT)*;
 
 contract: automata | invariant;
 
@@ -15,13 +18,20 @@ automata: CONTRACT name=Ident LBRACE
     use_contracts*
     RBRACE;
 
-prepost: CONTRACT name=Ident ':=' pre=STRING '==>' post=STRING;
-transition: from=Ident ARROW to=Ident '::' (contr=Ident| pre=STRING '==>' post=STRING);
+vvguard: '#[' (vvexpr (COMMA? vvexpr)*)?  ']';
+vvexpr: vv ('..' vv)?;
+vv: version | Ident;
+
+prepost: CONTRACT name=Ident ASSIGN pre=expr STRONG_ARROW post=expr;
+
+transition: vvguard? from=Ident ARROW to=Ident DOUBLE_COLUMN
+    (contr=Ident| pre=expr STRONG_ARROW post=expr);
+
 
 invariant: CONTRACT name=Ident LBRACE
   io*
   history*
-  pre=STRING '==>' post=STRING
+  pre=STRING STRONG_ARROW post=STRING
   use_contracts*
  RBRACE;
 
@@ -43,60 +53,79 @@ use_contracts: CONTRACT use_contract (COMMA use_contract)*;
 use_contract: Ident ('[' (subst (COMMA subst)*)? ']')?;
 subst: local=Ident BARROW from=ioport;
 
-defines: 'defines' LBRACE variable+ RBRACE;
+defines: DEFINES LBRACE variable+ RBRACE;
+
 io: type=(INPUT|OUTPUT|STATE) variable (COMMA variable)*;
-history: 'history' n=Ident LPAREN INT RPAREN;
+history: HISTORY n=Ident LPAREN INT RPAREN;
+
 variable: n+=Ident (COMMA n+=Ident)* COLON t=Ident (':=' init=STRING)?;
 reaction: CODE;
 
+ident: Ident | HISTORY | DEFINES;
 
-stateExpr:
-     unaryop=(NOT|MINUS) stateExpr
-    | stateExpr op=IN stateExpr
-    | stateExpr op=UNION  stateExpr
-    | stateExpr op=DIV stateExpr
-    | stateExpr op=MOD stateExpr
-    | stateExpr op=STAR stateExpr
-    | stateExpr op=PLUS stateExpr
-    | stateExpr op=MINUS stateExpr
-    | stateExpr op=DCOLON stateExpr
-    | stateExpr op=SHIFTL stateExpr
-    | stateExpr op=SHIFTR stateExpr
-    | stateExpr op=(EQ | NEQ | LT | GT | LTE | GTE) stateExpr
-    | stateExpr op=AND stateExpr
-    | stateExpr op=(OR | XOR | XNOR) stateExpr
-    | stateExpr '?' stateExpr ':' stateExpr
-    | stateExpr op=EQUIV stateExpr
-    | stateExpr op=IMP stateExpr
+
+expr:
+     unaryop=(NOT|MINUS) expr
+    | expr op=DIV expr
+    | expr op=MOD expr
+    | expr op=STAR expr
+    | expr op=PLUS expr
+    | expr op=MINUS expr
+    | expr op=SHIFTL expr
+    | expr op=SHIFTR expr
+    | expr op=(EQ | NEQ | LT | GT | LTE | GTE) expr
+    | expr op=AND expr
+    | expr op=(OR | XOR | XNOR) expr
+    | expr QUESTION_MARK expr COLON expr
+    | expr op=IMP expr
     | terminalAtom
     ;
 
+QUESTION_MARK : '?' ;
+
 terminalAtom
-    : LPAREN stateExpr RPAREN                                                   # paren
-    | name=Ident LPAREN stateExpr ( COMMA  stateExpr)* RPAREN                   # functionExpr
-    | casesExpr                                                                 # casesExprAtom
-    //| var=ID                                                                    # variableAccess
-    | var=Iden (LBRACKET INT RBRACKET)+                                         # arrayAccess
-    | value=Ident (DOT dotted=terminalAtom | (LBRACKET array+=INT RBRACKET)*)   # variableDotted
-    | value=INT                                                                 # integerLiteral
-    | value=FLOAT                                                               # floatLiteral
-    | value='TRUE'                                                              # trueExpr
-    | value='FALSE'                                                             # falseExpr
-    | LBRACE stateExpr ( COMMA  stateExpr)* RBRACE                              # setExpr
-    | value=WORD_LITERAL                                                        # wordValue
-  //  | rangeExpr                                                                 # rangeExpr2
+    : LPAREN expr RPAREN                                              # paren
+    | name=Ident LPAREN expr ( COMMA  expr)* RPAREN                   # functionExpr
+    | casesExpr                                                       # casesExprAtom
+    | value=Ident varprefix*                                          # variablewithprefix
+    | value=INT                                                       # integerLiteral
+    | value=FLOAT                                                     # floatLiteral
+    | value='TRUE'                                                    # trueExpr
+    | value='FALSE'                                                   # falseExpr
+    | value=WORD_LITERAL                                              # wordValue
     ;
 
-//rangeExpr : lower=NUMBER DOTDOT upper=NUMBER;
+varprefix : DOT dotted=Ident            #fieldaccess
+          | LBRACKET index=expr RBRACKET #arrayaccess
+          ;
 
-casesExpr :
-	CASE (branches+=caseBranch)+ ESAC;
-
-caseBranch :
-	cond=stateExpr COLON val=stateExpr SEMI;
+casesExpr  : CASE (branches+=caseBranch)+ ESAC;
+caseBranch : cond=expr COLON val=expr SEMI;
 
 
 // Lexer
+NOT: '!';
+MINUS:'-';
+PLUS:'+';
+CASE:'case';
+ESAC:'esac';
+EQ:'=';
+NEQ:'!=';
+LT:'<';
+GTE:'>=';
+LTE:'<=';
+GT:'>';
+SHIFTL: '<<';
+DIV:'/';
+MOD:'%';
+STAR:'*';
+SHIFTR: '>>';
+IMP:'=>';
+OR:'|';
+XOR:'xor';
+XNOR:'xnor';
+AND:'&';
+
 DOT:'.';
 LPAREN:'(';
 RPAREN:')';
@@ -113,7 +142,8 @@ MCOMMENT: '/*' .*? '*/' -> skip;
 STRING: '"' .*? '"';
 REACTOR: 'reactor';
 CONTRACT: 'contract';
-//MAIN: 'main';
+DEFINES : 'defines' ;
+HISTORY : 'history' ;
 INPUT: 'input';
 OUTPUT: 'output';
 STATE: 'state';
@@ -121,6 +151,9 @@ ARROW: '->';
 BARROW: '<-';
 COLON: ':';
 COMMA: ',';
+ASSIGN : ':=' ;
+STRONG_ARROW : '==>' ;
+DOUBLE_COLUMN : '::' ;
 
 
 WORD_LITERAL:

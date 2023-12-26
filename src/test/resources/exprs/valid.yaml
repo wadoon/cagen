@@ -1,0 +1,74 @@
+- in: "!(abs(TTC) < FCWtime & TTC >= 0sd32_0)"
+  c: " !((abs(TTC) < FCWtime) && (TTC >= 0))"
+  smv: "!(abs(TTC) < FCWtime & TTC >= 0sd32_0)"
+
+- in: "!stop & TTC>=0sd32_0"
+  c: "(!stop && (TTC >= 0))"
+  smv: "!stop & TTC >= 0sd32_0"
+
+- in: "(AEBstatus > 0sd32_0) = (deceleration > 0sd32_0)        & (FCWactivate = 0sd32_1) | (FCWactivate = 0sd32_0)        & egoCarStop = (egoVelocity <= C1)"
+  c: "((((AEBstatus > 0) == (deceleration > 0)) && (FCWactivate == 1)) || ((FCWactivate == 0) && (egoCarStop == (egoVelocity <= C1))))"
+  smv: "AEBstatus > 0sd32_0 = deceleration > 0sd32_0 & FCWactivate = 0sd32_1 | FCWactivate = 0sd32_0 & egoCarStop = egoVelocity <= C1"
+
+- in: "0sd32_0 <= PB1_DECEL & PB1_DECEL <= PB2_DECEL                               & PB2_DECEL <= FB_DECEL                               & 0sd32_0 <= egoVelocity"
+  c: "((((0 <= PB1_DECEL) && (PB1_DECEL <= PB2_DECEL)) && (PB2_DECEL <= FB_DECEL)) && (0 <= egoVelocity))"
+  smv: "0sd32_0 <= PB1_DECEL & PB1_DECEL <= PB2_DECEL & PB2_DECEL <= FB_DECEL & 0sd32_0 <= egoVelocity"
+
+- in: "0sd32_0 <= mioDistance                    &            mioDistance <= 0sd32_1024                     & -0sd32_1024 <= mioVelocity                    &                mioVelocity <= 0sd32_1024"
+  c: "((((0 <= mioDistance) && (mioDistance <= 1024)) && (-1024 <= mioVelocity)) && (mioVelocity <= 1024))"
+  smv: "0sd32_0 <= mioDistance & mioDistance <= 0sd32_1024 & -0sd32_1024 <= mioVelocity & mioVelocity <= 0sd32_1024"
+
+- in: "0sd32_0 <= mioDistance & 0sd32_0 <= egoVelocity        & 0sd32_0 <= mioDistance & mioDistance <= 0sd32_1024 & -0sd32_1024 <= mioVelocity & mioVelocity <= 0sd32_1024"
+  smv: "0sd32_0 <= mioDistance & 0sd32_0 <= egoVelocity & 0sd32_0 <= mioDistance & mioDistance <= 0sd32_1024 & -0sd32_1024 <= mioVelocity & mioVelocity <= 0sd32_1024"
+  c: "((((((0 <= mioDistance) && (0 <= egoVelocity)) && (0 <= mioDistance)) && (mioDistance <= 1024)) && (-1024 <= mioVelocity)) && (mioVelocity <= 1024))"
+
+- in: "0sd32_1"
+  c: "1"
+  smv: "0sd32_1"
+- in: "0sd32_10"
+  c: "10"
+  smv: "0sd32_10"
+- in: "0sd32_15"
+  c: "15"
+  smv: "0sd32_15"
+- in: "0sd32_2"
+  c: "2"
+  smv: "0sd32_2"
+- in: "0sd32_3"
+  c: "3"
+  smv: "0sd32_3"
+- in: "0sd32_5"
+  c: "5"
+  smv: "0sd32_5"
+
+- in: "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_0"
+  c: "(((AEBstatus == 0) && (decel == 0)) && (FCWactivate == 0))"
+  smv: "AEBstatus = 0sd32_0 & decel = 0sd32_0 & FCWactivate = 0sd32_0"
+
+- in: "TRUE"
+  c: "true"
+  smv: "TRUE"
+
+- in: "abs(TTC) < FCWtime & TTC >= 0sd32_0"
+  c: "((abs(TTC) < FCWtime) && (TTC >= 0))"
+  smv: "abs(TTC) < FCWtime & TTC >= 0sd32_0"
+
+- in: "abs(TTC) >= (0sd32_2 * FCWtime)"
+  c: "(abs(TTC) >= (2 * FCWtime))"
+  smv: "abs(TTC) >= 0sd32_2 * FCWtime"
+
+- in: "collision = ((mioDistance - headawayOffset) < 0sd32_2)"
+  c: "(collision == ((mioDistance - headawayOffset) < 2))"
+  smv: "collision = mioDistance - headawayOffset < 0sd32_2"
+
+- in: "reactTime <= FCWStoppingTime & 0sd32_0 <= FBStoppingTime & FBStoppingTime <= PB1StoppingTime & PB1StoppingTime <= PB2StoppingTime"
+  c: "((((reactTime <= FCWStoppingTime) && (0 <= FBStoppingTime)) && (FBStoppingTime <= PB1StoppingTime)) && (PB1StoppingTime <= PB2StoppingTime))"
+  smv: "reactTime <= FCWStoppingTime & 0sd32_0 <= FBStoppingTime & FBStoppingTime <= PB1StoppingTime & PB1StoppingTime <= PB2StoppingTime"
+
+- in: "stop  & TTC < 0sd32_0"
+  c: "(stop && (TTC < 0))"
+  smv: "stop & TTC < 0sd32_0"
+
+- in: "v = (a <= C1)"
+  c: "(v == ( a <= C1))"
+  smv: "v = (a <= C1)"

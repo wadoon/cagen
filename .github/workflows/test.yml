@@ -1,0 +1,48 @@
+name: Tests
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+    branches:
+      - "main"
+  merge_group:
+
+
+jobs:
+  unit-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        java: [17, 21]
+    continue-on-error: false
+    runs-on: ${{ matrix.os }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'corretto'
+          cache: 'gradle'
+
+      - name: Build with Gradle
+        uses: gradle/gradle-build-action@v2.4.2
+        with:
+          arguments: --continue test
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3.1.1
+        if: success() || failure()
+        with:
+          name: test-results
+          path: |
+            **/build/test-results/*/*.xml
+            **/build/reports/
+            !**/jacocoTestReport.xml
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3

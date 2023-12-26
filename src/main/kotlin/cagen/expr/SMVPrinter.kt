@@ -1,11 +1,7 @@
-package cagen
+package cagen.cagen.expr
 
-import org.jetbrains.annotations.NotNull
-import java.io.BufferedWriter
-import java.io.File
-import java.io.FileWriter
-import java.io.StringWriter
-import java.io.Writer
+import java.io.*
+import java.util.*
 
 class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
     val sort = true
@@ -41,7 +37,8 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
         }
 
         return if (expr is SLiteral || expr is SVariable
-            || expr is SFunction) {
+            || expr is SFunction
+        ) {
             -1
         } else 1000
 
@@ -86,7 +83,7 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
         stream.print("MODULE ")
         stream.print(m.name)
         if (!m.moduleParameters.isEmpty()) {
-            stream.print("(");
+            stream.print("(")
             m.moduleParameters.forEachIndexed { index, sVariable ->
                 sVariable.accept(this)
                 if (index + 1 < m.moduleParameters.size) stream.print(", ")
@@ -184,6 +181,7 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
                 quantified[0].accept(this)
                 stream.print(")")
             }
+
             2 -> {
                 stream.print("( ")
                 (quantified[0].accept(this))
@@ -193,8 +191,22 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
                 (quantified[1].accept(this))
                 stream.print(")")
             }
+
             else -> throw IllegalStateException("too much arity")
         }
+    }
+
+    override fun visit(access: SFieldAccess) {
+        access.expr.accept(this)
+        stream.print(".")
+        access.sub.accept(this)
+    }
+
+    override fun visit(access: SArrayAccess) {
+        access.expr.accept(this)
+        stream.print("[")
+        access.index.accept(this)
+        stream.print("]")
     }
 
     private fun printVariables(type: String, v: List<SVariable>) {
@@ -225,9 +237,11 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
     }
 
     companion object {
-        private val RESERVED_KEYWORDS = hashSetOf("A", "E", "F", "G", "INIT", "MODULE", "case", "easc",
+        private val RESERVED_KEYWORDS = hashSetOf(
+            "A", "E", "F", "G", "INIT", "MODULE", "case", "easc",
             "next", "init", "TRUE", "FALSE", "in", "mod", "union", "process", "AU", "EU", "U", "V", "S",
-            "T", "EG", "EX", "EF", "AG", "AX", "AF", "X", "Y", "Z", "H", "O", "min", "max")
+            "T", "EG", "EX", "EF", "AG", "AX", "AF", "X", "Y", "Z", "H", "O", "min", "max"
+        )
 
         private val regex by lazy {
             val rk = RESERVED_KEYWORDS.joinToString("|", "(", ")")
@@ -235,7 +249,7 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
         }
 
 
-        fun quoted(name: String) :String {
+        fun quoted(name: String): String {
             /*return regex.replace(name) {
                 "\"${it.value}\""
             }*/
@@ -268,8 +282,7 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
  * @author weigla (15.06.2014)
  * @version 2
  */
-open class CodeWriter(var stream: Writer = StringWriter())
-    : Appendable by stream {
+open class CodeWriter(var stream: Writer = StringWriter()) : Appendable by stream {
 
     var uppercaseKeywords = true
     var ident = "    "
@@ -298,7 +311,7 @@ open class CodeWriter(var stream: Writer = StringWriter())
     }
 
     open fun keyword(keyword: String): CodeWriter {
-        return printf(if (uppercaseKeywords) keyword.toUpperCase() else keyword.toLowerCase())
+        return printf(if (uppercaseKeywords) keyword.uppercase(Locale.getDefault()) else keyword.lowercase(Locale.getDefault()))
     }
 
     fun nl(): CodeWriter {
@@ -351,8 +364,8 @@ open class CodeWriter(var stream: Writer = StringWriter())
         return this@unaryPlus
     }
 
-    companion object{
-        fun with(fn : CodeWriter.() -> Unit) : String {
+    companion object {
+        fun with(fn: CodeWriter.() -> Unit): String {
             val cw = CodeWriter()
             fn(cw)
             return cw.stream.toString()

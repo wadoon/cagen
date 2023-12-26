@@ -1,5 +1,7 @@
 package cagen
 
+import cagen.cagen.expr.SMVExpr
+
 val Type.asSmvType: String
     get() = when (this) {
         is BuiltInType ->
@@ -45,8 +47,8 @@ object SmvUtils {
     STATE_IN_NEXT := ( ${states.joinToString(" | ") { "next($it)" }} );
     ${
             contract.contracts.joinToString("\n") {
-                "pre_${it.name} := ${it.pre.toSmvExpr()};\n" +
-                        "post_${it.name} := ${it.post.toSmvExpr()};\n" +
+                "pre_${it.name} := ${it.pre.toSMVExpr()};\n" +
+                        "post_${it.name} := ${it.post.toSMVExpr()};\n" +
                         "${it.name} := pre_${it.name} & post_${it.name};\n"
             }
         }
@@ -182,7 +184,7 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
             .joinToString("\n") { "    self_${it.first} : ${it.second};" }
 
 
-        var contracts = mutableSetOf<Contract>()
+        val contracts = mutableSetOf<Contract>()
 
         buildString {
             append(
@@ -268,7 +270,11 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
     }
 }
 
-private fun String.toSmvExpr(): String =
-    replace("abs(TTC)", "(case TTC < 0sd32_0: -TTC; TRUE : TTC; esac)")
+fun SMVExpr.toSMVExpr() : String {
+    return cagen.cagen.expr.SMVPrinter.toString(this)
+}
+
+//private fun String.toSmvExpr(): String =
+//    replace("abs(TTC)", "(case TTC < 0sd32_0: -TTC; TRUE : TTC; esac)")
 
 fun String.comma(): String = if (isBlank()) this else "$this,"
