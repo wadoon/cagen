@@ -1,6 +1,6 @@
 package cagen
 
-import cagen.cagen.expr.*
+import cagen.expr.*
 import cagen.parser.SystemDefBaseVisitor
 import cagen.parser.SystemDefLexer
 import cagen.parser.SystemDefParser
@@ -89,8 +89,6 @@ object ParserFacade {
 }
 
 data class IOPort(val variable: Variable, val portName: String)
-
-private val self = Variable("self", BuiltInType("self"), "")
 
 class Translator : SystemDefBaseVisitor<Unit>() {
     val model = Model()

@@ -1,9 +1,8 @@
-package cagen.cagen.gen
+package cagen.code
 
 import cagen.*
-import cagen.cagen.expr.SMVExpr
+import cagen.expr.SMVExpr
 import cagen.expr.CPrinter
-import cagen.gen.CCodeUtils
 import java.io.PrintWriter
 
 /**

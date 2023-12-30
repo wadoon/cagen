@@ -1,4 +1,4 @@
-package cagen.gen
+package cagen.draw
 
 import cagen.*
 

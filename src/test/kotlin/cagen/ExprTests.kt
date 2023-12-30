@@ -1,6 +1,7 @@
 package cagen
 
-import cagen.cagen.gen.CCodeUtilsSimplified.toCExpr
+import cagen.code.CCodeUtilsSimplified.toCExpr
+import cagen.modelchecker.toSMVExpr
 import cagen.tutil.YamlSourceFile
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.params.ParameterizedTest

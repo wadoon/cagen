@@ -1,10 +1,10 @@
-package cagen.gen
+package cagen.code
 
 import cagen.*
-import cagen.cagen.expr.SMVExpr
-import cagen.cagen.gen.CCodeUtilsSimplified.toC
-import cagen.cagen.gen.CCodeUtilsSimplified.toCExpr
-import cagen.cagen.gen.CCodeUtilsSimplified.toCValue
+import cagen.expr.SMVExpr
+import cagen.code.CCodeUtilsSimplified.toC
+import cagen.code.CCodeUtilsSimplified.toCExpr
+import cagen.code.CCodeUtilsSimplified.toCValue
 import java.nio.file.Path
 import kotlin.io.path.div
 import kotlin.io.path.writeText

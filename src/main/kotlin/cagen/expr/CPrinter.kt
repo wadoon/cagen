@@ -1,7 +1,7 @@
 package cagen.expr
 
-import cagen.cagen.expr.*
-import cagen.cagen.expr.SBinaryOperator.*
+import cagen.expr.*
+import cagen.expr.SBinaryOperator.*
 
 class CPrinter : SMVAstVisitor<String> {
     companion object {

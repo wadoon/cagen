@@ -1,4 +1,4 @@
-package cagen.cagen.expr
+package cagen.expr
 
 import org.antlr.v4.runtime.Token
 import java.math.BigDecimal
@@ -62,24 +62,21 @@ data class SBinaryExpression(
     override fun clone() = SBinaryExpression(left.clone(), operator, right.clone())
 }
 
-private class Find(val target: SMVExpr) : SMVAstDefaultVisitorNN<Unit>() {
-    var found: Boolean = false
+operator fun SMVExpr.contains(e: SBinaryExpression): Boolean {
+    class Find(val target: SMVExpr) : SMVAstDefaultVisitorNN<Unit>() {
+        var found: Boolean = false
 
-    override fun defaultVisit(top: SMVAst) {
-        found = found || top == target
+        override fun defaultVisit(top: SMVAst) {
+            found = found || top == target
+        }
     }
-}
 
-private operator fun SMVExpr.contains(e: SBinaryExpression): Boolean {
     val f = Find(e)
     this.accept(f)
     return f.found
 }
 
 
-/**
- *
- */
 data class SCaseExpression(var cases: MutableList<Case> = arrayListOf()) : SMVExpr() {
     override val dataType: SMVType?
         get() {
@@ -139,10 +136,6 @@ data class SCaseExpression(var cases: MutableList<Case> = arrayListOf()) : SMVEx
         var condition: SMVExpr,
         var then: SMVExpr
     ) {
-        override fun toString(): String {
-            return ":: $condition->$then"
-        }
-
         fun clone(): Case = Case(condition.clone(), then.clone())
     }
 
@@ -178,8 +171,12 @@ data class SFunction(
     }
 }
 
-sealed class SLiteral(open val value: Any, override val dataType: SMVType) : SMVExpr() {
+fun ite(cond: SMVExpr, then: SMVExpr, otherwise: SMVExpr) = SCaseExpression().apply {
+    add(cond, then)
+    add(SLiteral.TRUE, otherwise)
+}
 
+sealed class SLiteral(open val value: Any, override val dataType: SMVType) : SMVExpr() {
     override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
     abstract override fun clone(): SLiteral
@@ -348,7 +345,6 @@ abstract class SMVExpr : SMVAst() {
         return accept(r) as SMVExpr
     }
 }
-
 
 operator fun MutableList<SAssignment>.set(eq: SVariable, value: SMVExpr) {
     this.add(SAssignment(eq, value))
@@ -974,7 +970,7 @@ open class ExpressionReplacer(protected val assignments: Map<out SMVExpr, SMVExp
     override fun visit(v: SQuantified) = replace(v)
 }
 
-class SMVAstMutableTraversal(val visitor: SMVAstMutableVisitor) : SMVAstMutableVisitor() {
+open class SMVAstMutableTraversal(val visitor: SMVAstMutableVisitor) : SMVAstMutableVisitor() {
     override fun visit(top: SMVAst) = top
     override fun visit(v: SVariable): SMVExpr = v
 

@@ -1,6 +1,8 @@
-package cagen
+package cagen.modelchecker
 
-import cagen.cagen.expr.SMVExpr
+import cagen.*
+import cagen.System
+import cagen.expr.SMVExpr
 
 val Type.asSmvType: String
     get() = when (this) {
@@ -271,10 +273,9 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
 }
 
 fun SMVExpr.toSMVExpr() : String {
-    return cagen.cagen.expr.SMVPrinter.toString(this)
+    return cagen.expr.SMVPrinter.toString(this)
 }
 
-//private fun String.toSmvExpr(): String =
-//    replace("abs(TTC)", "(case TTC < 0sd32_0: -TTC; TRUE : TTC; esac)")
+
 
 fun String.comma(): String = if (isBlank()) this else "$this,"

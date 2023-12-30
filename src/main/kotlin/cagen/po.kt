@@ -1,7 +1,9 @@
 package cagen
 
-import cagen.cagen.gen.CCodeUtilsSimplified
-import cagen.gen.CCodeUtils
+import cagen.code.CCodeUtilsSimplified
+import cagen.code.CCodeUtils
+import cagen.modelchecker.SmvUtils
+import cagen.modelchecker.asSmvType
 import java.io.PrintWriter
 import java.nio.file.Files
 import java.nio.file.Path

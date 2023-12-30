@@ -1,7 +1,7 @@
 package cagen
 
-import cagen.gen.CCodeUtils
-import cagen.gen.Tikz
+import cagen.code.CCodeUtils
+import cagen.draw.Tikz
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
@@ -40,6 +40,18 @@ class TikzCommand : CliktCommand() {
     }
 }
 
+class ConstructCA : CliktCommand(name = "construct") {
+    val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
+    val systemName by argument()
+    override fun run() {
+        val (sys, contracts) = ParserFacade.loadFile(inputFile)
+        val system = sys.find { it.name == systemName }
+            ?: error("The provided systemName can not be find in the given file $inputFile")
+
+        ConstructCAFacade.construct(system)
+    }
+}
+
 
 class ExtractCode : CliktCommand() {
     val outputFolder by option("-o", "--output").file().default(File("output"))
@@ -62,6 +74,7 @@ class Verify : CliktCommand() {
     val outputFolder by option("-o", "--output").file().default(File("output"))
     val inputFile by argument("SYSTEM")
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
+
     override fun run() {
         val model = ParserFacade.loadFile(inputFile)
         val pos = createProofObligations(model)
@@ -83,5 +96,5 @@ class Verify : CliktCommand() {
 
 
 fun main(args: Array<String>) = Tool()
-    .subcommands(ExtractCode(), DotCommmand(), TikzCommand(), Verify())
+    .subcommands(ExtractCode(), DotCommmand(), TikzCommand(), Verify(), ConstructCA())
     .main(args)

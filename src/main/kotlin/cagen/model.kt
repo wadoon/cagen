@@ -1,6 +1,6 @@
 package cagen
 
-import cagen.cagen.expr.SMVExpr
+import cagen.expr.SMVExpr
 import java.util.concurrent.atomic.AtomicInteger
 
 val KNOWN_BUILT_IN_TYPES = setOf(
@@ -43,12 +43,15 @@ data class SystemType(val system: System) : Type {
 
 data class Variable(val name: String, val type: Type, val initValue: String)
 
+val self = Variable("self", BuiltInType("self"), "")
+
 data class Signature(
     val inputs: MutableList<Variable> = arrayListOf(),
     val outputs: MutableList<Variable> = arrayListOf(),
     val internals: MutableList<Variable> = arrayListOf(),
 ) {
     fun get(name: String) = all.find { it.name == name }
+    fun accessible(name: String) = (inputs + outputs).find { it.name == name }
 
     val all
         get() = inputs + outputs + internals
@@ -58,6 +61,12 @@ data class Signature(
 
     val plainInternals
         get() = internals.filter { it.type !is SystemType }
+
+    operator fun plus(signature: Signature): Signature = Signature(
+        (inputs + signature.inputs).toMutableList(),
+        (outputs + signature.outputs).toMutableList(),
+        (internals + signature.internals).toMutableList()
+    )
 }
 
 data class System(
@@ -73,34 +82,44 @@ data class System(
     val subSystemsTrans: List<System>
         get() = listOf(this) + subSystems.flatMap { it.subSystemsTrans }
 
+    val variablesInToporder: List<List<Variable>>
+        get() = toporderSystem(ArrayList(signature.instances), ArrayList(connections))
 
     val toporder: String
         get() = toporder(ArrayList(signature.instances), ArrayList(connections))
 }
 
-data class UseContract(val contract: Contract, val variableMap: MutableList<Pair<String, IOPort>>)
+data class UseContract(val contract: Contract, val variableMap: MutableList<Pair<String, IOPort>>) {
+    /**
+     * Returns a contract that uses the variable renaming
+     */
+    fun prefix(prefix: String): UseContract {
+        val renamedTransitions = contract.transitions.map {
+            it.copy(contract = it.contract.prefix(prefix))
+        }
+        val c = contract.copy(transitions = renamedTransitions)
+        val newMap = variableMap.map { (a, b) -> prefix + a to b }
+            .toMutableList()
+        return UseContract(c, newMap)
+    }
+}
 
-//sealed interface Contract : Component {}
-
-/*data class AGContract(
-    override val name: String, override val signature: Signature,
-    override val history: List<Pair<String, Int>>,
-    val pre: String, val post: String, val isLtl: Boolean = false
-) : Contract {
-    override var parent: MutableList<UseContract> = arrayListOf()
-}*/
+private fun PrePost.prefix(prefix: String): PrePost = copy(pre.prefix(prefix), post.prefix(prefix))
 
 data class Contract(
     override val name: String,
     override val signature: Signature,
     val history: List<Pair<String, Int>>,
-    var transitions: List<CATransition>,
+    val transitions: List<CATransition>,
     val parent: MutableList<UseContract> = arrayListOf()
 ) : Component {
+    var disabledTransitions: List<CATransition> = mutableListOf()
+    var activeTransitions: List<CATransition> = mutableListOf()
+
     fun activateVersion(current: List<VV>) {
         val allTrans = transitions + disabledTransitions
         val t = allTrans.groupBy { it.vvGuard.evaluate(current) }
-        transitions = t[true] ?: listOf()
+        activeTransitions = t[true] ?: listOf()
         disabledTransitions = t[false] ?: listOf()
     }
 
@@ -109,12 +128,36 @@ data class Contract(
     val states
         get() = transitions.flatMap { listOf(it.from, it.to) }.toSet()
 
-    var disabledTransitions: List<CATransition> = mutableListOf()
+    infix operator fun times(other: Contract): Contract {
+        val sig = signature + other.signature
+        val his = history + other.history
+        val trans = transitions * other.transitions
+        return Contract(name + "_" + other.name, sig, his, trans)
+    }
 }
 
+private operator fun Iterable<CATransition>.times(transitions: Iterable<CATransition>): List<CATransition> =
+    flatMap { t ->
+        transitions.map { s ->
+            val contract = PrePost(
+                t.contract.pre and s.contract.pre,
+                t.contract.post and s.contract.post,
+                "${t.name}_${s.name}_contract"
+            )
+
+            CATransition(
+                "${t.name}_${s.name}", "${t.from}_${s.from}", "${t.to}_${s.to}",
+                t.vvGuard and s.vvGuard,
+                contract
+            )
+        }
+    }
+
+val counter = AtomicInteger()
+
 data class PrePost(
-    val pre: /*String*/ SMVExpr,
-    val post: /*String*/ SMVExpr,
+    val pre: SMVExpr,
+    val post: SMVExpr,
     var name: String = "anonymous_contract_${counter.getAndIncrement()}"
 ) {
     companion object {
@@ -128,6 +171,27 @@ data class CATransition(
     val vvGuard: VVGuard,
     val contract: PrePost
 )
+
+private fun toporderSystem(
+    remaining: MutableList<Variable>,
+    ports: MutableList<Pair<IOPort, IOPort>>
+): List<List<Variable>> {
+    val incoming = mutableMapOf<Variable, MutableList<Variable>>()
+    val results = mutableListOf<List<Variable>>()
+    ports.forEach { (i, o) ->
+        (incoming.computeIfAbsent(o.variable) { mutableListOf() }).add(i.variable)
+    }
+
+    for (i in 0 until remaining.size) {
+        val layer = remaining.filter { incoming[it]?.isEmpty() ?: false }
+        results.add(layer)
+
+        incoming.forEach { (_, u) -> u.removeAll(layer) }
+        remaining.removeAll(layer)
+    }
+    require(remaining.isEmpty())
+    return results
+}
 
 private fun toporder(
     remaining: MutableList<Variable>,
@@ -197,10 +261,14 @@ private fun topordersys(
 }
 
 //region
-data class VVGuard(val vv: List<VVRange> = listOf()) {
+data class VVGuard(val values: List<VVRange> = listOf()) {
     fun evaluate(current: List<VV>): Boolean {
-        if (vv.isEmpty()) return true
-        return vv.all { it.evaluate(current) }
+        if (values.isEmpty()) return true
+        return values.all { it.evaluate(current) }
+    }
+
+    infix fun and(other: VVGuard): VVGuard {
+        return VVGuard(values + other.values)
     }
 
     companion object {
@@ -227,7 +295,7 @@ sealed class VV {
     fun lessThanOrEqual(other: VV) = compareTo(other)?.let { it <= 0 } ?: false
 }
 
-data class VariantFamily(private val names: MutableList<Variant> = mutableListOf()) {
+data class VariantFamily(val names: MutableList<Variant> = mutableListOf()) {
     constructor(vararg names: String) : this() {
         names.forEach { add(it) }
     }
@@ -273,7 +341,7 @@ data class Version(val number: List<Int>) : VV() {
         }
 }
 
-data class VariantLattice(private val families: MutableList<VariantFamily> = mutableListOf()) {
+data class VariantLattice(val families: MutableList<VariantFamily> = mutableListOf()) {
     fun evaluate(expr: VVGuard, current: List<VV>): Boolean {
         return false
     }
