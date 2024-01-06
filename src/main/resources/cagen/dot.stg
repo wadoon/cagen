@@ -1,2 +1,0 @@
-__print_dot_node(name,label, style) ::= "<name> [ label=\"<label>\", <style>]"
-

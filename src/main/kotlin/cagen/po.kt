@@ -26,7 +26,7 @@ class ImplPOMonitor(val model: Model, val system: System, val contract: UseContr
         val outputFolder = folder / name
         Files.createDirectories(outputFolder)
 
-        CCodeUtils.writeGlobals(folder, model.globalDefines, model.globalCode)
+        CCodeUtils.writeGlobals(folder, model.globalDefines, model.globalCode?:"")
         CCodeUtils.writeContractAutomata(contract.contract, outputFolder)
         CCodeUtils.writeSystemCode(system, outputFolder)
         CCodeUtils.writeGlueCode(system, contract, outputFolder / "$name.c")

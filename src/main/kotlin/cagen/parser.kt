@@ -4,9 +4,7 @@ import cagen.expr.*
 import cagen.parser.SystemDefBaseVisitor
 import cagen.parser.SystemDefLexer
 import cagen.parser.SystemDefParser
-import cagen.parser.SystemDefParser.ArrayaccessContext
-import cagen.parser.SystemDefParser.ConnectionContext
-import cagen.parser.SystemDefParser.FieldaccessContext
+import cagen.parser.SystemDefParser.*
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
@@ -35,7 +33,9 @@ object ParserFacade {
         return t.model
     }
 
-    fun loadFile(file: File) = interpret(parser(lexer(CharStreams.fromPath(file.toPath()))))
+    fun loadFile(file: File) = loadFile(CharStreams.fromPath(file.toPath()))
+    fun loadFile(stream: CharStream): Model = interpret(parser(lexer(stream)))
+
     fun parseExpr(content: String): SMVExpr = parseExpr(CharStreams.fromString(content))
 
     fun parseExpr(content: CharStream): SMVExpr = interpretExpr(parser(lexer(content)))
@@ -44,6 +44,8 @@ object ParserFacade {
         val expr = parser.expr()
         return expr.accept(Translator.ExpressionParser)
     }
+
+
 
     private class ExceptionalErrorListener : ANTLRErrorListener {
         override fun syntaxError(
@@ -92,17 +94,17 @@ data class IOPort(val variable: Variable, val portName: String)
 
 class Translator : SystemDefBaseVisitor<Unit>() {
     val model = Model()
-    var vvGuard: VVGuard = VVGuard.DEFAULT
+    private var vvGuard: VVGuard = VVGuard.DEFAULT
 
-    override fun visitModel(ctx: SystemDefParser.ModelContext) {
-        model.globalCode = ctx.globalCode?.text?.let { cleanCode(it) } ?: ""
+    override fun visitModel(ctx: ModelContext) {
+        model.globalCode = ctx.globalCode?.text?.let { cleanCode(it) }
         ctx.defines()?.variable()?.forEach { varctx ->
             val typename = varctx.t.text
             val type =
                 if (typename in KNOWN_BUILT_IN_TYPES) BuiltInType(typename)
                 else SystemType(model.systems.find { it.name == typename }
                     ?: error("Could not find a system with $typename ${varctx.position}"))
-            val init = varctx.init?.text ?: "0"
+            val init = varctx.init?.asExpr()
             for (token in varctx.n) model.globalDefines.add(Variable(token.text, type, init))
         }
         ctx.variants().forEach { it.accept(this) }
@@ -111,22 +113,22 @@ class Translator : SystemDefBaseVisitor<Unit>() {
     }
 
     //region version and variants
-    override fun visitVariants(ctx: SystemDefParser.VariantsContext) {
+    override fun visitVariants(ctx: VariantsContext) {
         val vf = VariantFamily()
         ctx.ident().forEach { vf.add(it.text) }
         model.variants.add(vf)
     }
 
 
-    fun version(ctx: SystemDefParser.VersionContext): Version = Version(ctx.text)
+    fun version(ctx: VersionContext): Version = Version(ctx.text)
 
-    override fun visitVvguard(ctx: SystemDefParser.VvguardContext) {
+    override fun visitVvguard(ctx: VvguardContext) {
         vvGuard =
             if (ctx.vvexpr().isEmpty()) VVGuard.DEFAULT
             else VVGuard(ctx.vvexpr().map { vvexpr(it) })
     }
 
-    fun vvexpr(ctx: SystemDefParser.VvexprContext): VVRange {
+    fun vvexpr(ctx: VvexprContext): VVRange {
         val a = versionOrVariant(ctx.vv(0)) ?: error("Could not find variant ${ctx.vv(0).text}")
         return if (ctx.vv().size == 1) VVRange(a)
         else {
@@ -135,12 +137,12 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         }
     }
 
-    fun versionOrVariant(vv: SystemDefParser.VvContext) =
+    fun versionOrVariant(vv: VvContext) =
         if (vv.version() != null) version(vv.version())
         else model.findVariant(vv.text)
     //end region
 
-    override fun visitSystem(ctx: SystemDefParser.SystemContext) {
+    override fun visitSystem(ctx: SystemContext) {
         val signature = parseIo(ctx.io())
         val connections = parseConnections(ctx.connection(), signature, self)
         val contracts = ctx.use_contracts().flatMap {
@@ -163,7 +165,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
     }
 
     private fun parseSubst(
-        subst: List<SystemDefParser.SubstContext>,
+        subst: List<SubstContext>,
         signature: Signature,
         self: Variable
     ): MutableList<Pair<String, IOPort>> =
@@ -188,7 +190,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         cc.to.map { from to port(it, signature, self) }
     }.toMutableList()
 
-    private fun port(ioportContext: SystemDefParser.IoportContext, signature: Signature, self: Variable) =
+    private fun port(ioportContext: IoportContext, signature: Signature, self: Variable) =
         IOPort(
             ioportContext.inst?.let { inst ->
                 if (inst.text == "self") self
@@ -200,7 +202,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
     private fun cleanCode(text: String?): String? =
         text?.substring(2, text.length - 2)
 
-    private fun parseIo(io: List<SystemDefParser.IoContext>): Signature {
+    private fun parseIo(io: List<IoContext>): Signature {
         val sig = Signature()
         for (context in io) {
             val list = when {
@@ -214,14 +216,15 @@ class Translator : SystemDefBaseVisitor<Unit>() {
                     if (typename in KNOWN_BUILT_IN_TYPES) BuiltInType(typename)
                     else SystemType(model.systems.find { it.name == typename }
                         ?: error("Could not find a system with $typename ${varctx.position}"))
-                val init = varctx.init?.text ?: "0"
+                val init = varctx.init?.asExpr()
                 for (token in varctx.n) list.add(Variable(token.text, type, init))
+
             }
         }
         return sig
     }
 
-    override fun visitInvariant(ctx: SystemDefParser.InvariantContext) {
+    override fun visitInvariant(ctx: InvariantContext) {
         /*contracts.add(
             AGContract(
                 ctx.name.text,
@@ -232,7 +235,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         )*/
     }
 
-    private fun Contract.setParent(inherit: MutableList<SystemDefParser.Use_contractsContext>): Contract {
+    private fun Contract.setParent(inherit: MutableList<Use_contractsContext>): Contract {
         val contracts = inherit.flatMap { seq ->
             seq.use_contract().map { uc ->
                 val contract: Contract = (model.contracts.find { c -> c.name == uc.ident().text }
@@ -244,7 +247,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         return this
     }
 
-    override fun visitAutomata(ctx: SystemDefParser.AutomataContext) {
+    override fun visitAutomata(ctx: AutomataContext) {
         val localcontracts = ctx.prepost().associate {
             it.name.text to PrePost(
                 it.pre.asExpr(),
@@ -265,25 +268,24 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             contract ?: error("Could not find contract ${it.contr.text}")
             CATransition("t_${it.start.line}", it.from.text, it.to.text, vvGuard, contract)
         }
-        println(transitions)
         model.contracts.add(
             Contract(ctx.name.text, parseIo(ctx.io()), parseHistory(ctx.history()), transitions)
                 .setParent(ctx.use_contracts())
         )
     }
 
-    private fun parseHistory(history: List<SystemDefParser.HistoryContext>): List<Pair<String, Int>> =
+    private fun parseHistory(history: List<HistoryContext>): List<Pair<String, Int>> =
         history.map { it.n.text to it.INT().text.toInt() }
 
 
-    private fun SystemDefParser.ExprContext.asExpr() = this.accept(ExpressionParser)
+    private fun ExprContext.asExpr() = this.accept(ExpressionParser)
 
 
     object ExpressionParser : SystemDefBaseVisitor<SMVExpr>() {
-        override fun visitExpr(ctx: SystemDefParser.ExprContext): SMVExpr {
+        override fun visitExpr(ctx: ExprContext): SMVExpr {
             if (ctx.unaryop != null) {
                 return SUnaryExpression(
-                    if (ctx.unaryop.type == SystemDefParser.NOT)
+                    if (ctx.unaryop.type == NOT)
                         SUnaryOperator.NEGATE
                     else
                         SUnaryOperator.MINUS,
@@ -317,7 +319,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             }
         }
 
-        override fun visitVariablewithprefix(ctx: SystemDefParser.VariablewithprefixContext): SMVExpr {
+        override fun visitVariablewithprefix(ctx: VariablewithprefixContext): SMVExpr {
             var variable: SMVExpr = SVariable(ctx.ident().text)
 
             for (varprefix in ctx.varprefix()) {
@@ -331,11 +333,11 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             return variable
         }
 
-        override fun visitParen(ctx: SystemDefParser.ParenContext): SMVExpr {
+        override fun visitParen(ctx: ParenContext): SMVExpr {
             return ctx.expr().accept(this)
         }
 
-        override fun visitWordValue(ctx: SystemDefParser.WordValueContext): SMVExpr {
+        override fun visitWordValue(ctx: WordValueContext): SMVExpr {
             val p = ctx.text.split("_")
             val gdt = p[0][1] == 's'
 
@@ -343,7 +345,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             return SWordLiteral(BigInteger(p[1]), SMVWordType(gdt, bits))
         }
 
-        override fun visitCasesExpr(ctx: SystemDefParser.CasesExprContext): SMVExpr {
+        override fun visitCasesExpr(ctx: CasesExprContext): SMVExpr {
             val e = SCaseExpression()
             for (a in ctx.caseBranch()) {
                 val cond = a.cond.accept(this) as SMVExpr
@@ -353,24 +355,24 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             return e
         }
 
-        override fun visitTrueExpr(ctx: SystemDefParser.TrueExprContext): SLiteral {
+        override fun visitTrueExpr(ctx: TrueExprContext): SLiteral {
             return SLiteral.TRUE
         }
 
-        override fun visitFalseExpr(ctx: SystemDefParser.FalseExprContext): SLiteral {
+        override fun visitFalseExpr(ctx: FalseExprContext): SLiteral {
             return SLiteral.FALSE
         }
 
 
-        override fun visitFunctionExpr(ctx: SystemDefParser.FunctionExprContext): SMVExpr {
+        override fun visitFunctionExpr(ctx: FunctionExprContext): SMVExpr {
             val exprs = getSMVExprs(ctx)
             return SFunction(ctx.name.text, exprs)
         }
 
-        private fun getSMVExprs(ctx: SystemDefParser.FunctionExprContext): List<SMVExpr> =
+        private fun getSMVExprs(ctx: FunctionExprContext): List<SMVExpr> =
             ctx.expr().map { it.accept(this) }
 
-        override fun visitCasesExprAtom(ctx: SystemDefParser.CasesExprAtomContext): SMVExpr =
+        override fun visitCasesExprAtom(ctx: CasesExprAtomContext): SMVExpr =
             super.visitCasesExprAtom(ctx)
 
         override fun visitFieldaccess(ctx: FieldaccessContext): SMVExpr =
@@ -379,15 +381,15 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         override fun visitArrayaccess(ctx: ArrayaccessContext): SMVExpr =
             super.visitArrayaccess(ctx)
 
-        override fun visitIntegerLiteral(ctx: SystemDefParser.IntegerLiteralContext): SMVExpr {
+        override fun visitIntegerLiteral(ctx: IntegerLiteralContext): SMVExpr {
             return SIntegerLiteral(BigInteger(ctx.value.text))
         }
 
-        override fun visitFloatLiteral(ctx: SystemDefParser.FloatLiteralContext): SMVExpr {
+        override fun visitFloatLiteral(ctx: FloatLiteralContext): SMVExpr {
             return SFloatLiteral(BigDecimal(ctx.value.text))
         }
 
-        override fun visitCaseBranch(ctx: SystemDefParser.CaseBranchContext): SMVExpr {
+        override fun visitCaseBranch(ctx: CaseBranchContext): SMVExpr {
             return super.visitCaseBranch(ctx)
         }
     }

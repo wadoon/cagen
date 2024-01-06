@@ -1,13 +1,27 @@
 package cagen.draw
 
 import cagen.*
+import cagen.expr.CodeWriter
+import java.io.StringWriter
+import java.io.Writer
 
-object Tikz {
-    const val REFINEMENT_EDGE = ""
-    const val INFFLOW_EDGE = ""
-    val LTL_NODE = "shape=record,bgcolor=lightblue"
-    val INPUT_NODE = ""
-    val OUTPUT_NODE = ""
+private const val REFINEMENT_EDGE = ""
+private const val INFFLOW_EDGE = ""
+private const val LTL_NODE = "shape=record,bgcolor=lightblue"
+private const val INPUT_NODE = ""
+private const val OUTPUT_NODE = ""
+
+class TikzPrinter(writer: Writer) {
+    companion object {
+        fun asString(block: TikzPrinter.() -> Unit): String {
+            val sw = StringWriter()
+            TikzPrinter(sw).apply(block)
+            return sw.toString()
+        }
+    }
+
+    private val out = CodeWriter(writer)
+    fun println(s: String) = out.println(s)
 
     fun tikz(comps: List<Component>) {
         println("\\begin{tikzpicture}")

@@ -1,10 +1,9 @@
 package cagen.code
 
 import cagen.*
-import cagen.expr.SMVExpr
 import cagen.code.CCodeUtilsSimplified.toC
 import cagen.code.CCodeUtilsSimplified.toCExpr
-import cagen.code.CCodeUtilsSimplified.toCValue
+import cagen.expr.SMVExpr
 import java.nio.file.Path
 import kotlin.io.path.div
 import kotlin.io.path.writeText
@@ -254,7 +253,8 @@ object CCodeUtils {
             """
         ${
                 globalDefines.joinToString("\n") {
-                    "const ${it.type.toC()} ${it.name} = ${it.initValue.toCValue()};"
+                    require(it.initValue != null) { "Constant $it should have an initial value" }
+                    "const ${it.type.toC()} ${it.name} = ${it.initValue.toCExpr()};"
                 }
             }
         $globalCode            

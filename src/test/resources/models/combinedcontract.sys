@@ -1,0 +1,13 @@
+contract SR_ErrorThreshold8_cFalseContract {
+    input I : BuiltInType(name=bool)
+    input R : BuiltInType(name=bool)
+    input S : BuiltInType(name=bool)
+    output Q : BuiltInType(name=bool)
+    output Q : BuiltInType(name=bool)
+    output Q : BuiltInType(name=bool)
+
+    off_init_init -> On_init_init :: rs1_0S & !rs1_0R & 0 <= threshold_1I & threshold_1I <= 10 & TRUE / rs1_0Q & threshold_1Q = threshold_1I >= 8 & !cfalse_2Q
+    off_init_init -> On_init_init :: (rs1_0R | !rs1_0S) & 0 <= threshold_1I & threshold_1I <= 10 & TRUE / !rs1_0Q & threshold_1Q = threshold_1I >= 8 & !cfalse_2Q
+    On_init_init -> off_init_init :: (rs1_0R | !rs1_0S) & 0 <= threshold_1I & threshold_1I <= 10 & TRUE / !rs1_0Q & threshold_1Q = threshold_1I >= 8 & !cfalse_2Q
+    On_init_init -> On_init_init :: (!rs1_0R | rs1_0R & rs1_0S) & 0 <= threshold_1I & threshold_1I <= 10 & TRUE / !!rs1_0Q & threshold_1Q = threshold_1I >= 8 & !cfalse_2Q
+}

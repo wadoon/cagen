@@ -117,7 +117,7 @@ object SmvUtils {
         )
         ---- GLOBALS
         DEFINE
-        ${globalDefines.joinToString("\n") { "    ${it.name} := ${it.initValue.trim('"')};" }}
+        ${globalDefines.joinToString("\n") { "    ${it.name} := ${it.initValue!!.toSMVExpr()};" }}
         ----
     """.trimIndent()
 
@@ -195,7 +195,7 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
                 
                 ---- GLOBALS
                 DEFINE
-                ${model.globalDefines.joinToString("\n") { "    ${it.name} := ${it.initValue.trim('"')};" }}
+                ${model.globalDefines.joinToString("\n") { "    ${it.name} := ${it.initValue!!.toSMVExpr()};" }}
                 ---- 
                 
                 VAR

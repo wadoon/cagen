@@ -2,9 +2,9 @@ grammar SystemDef;
 
 model: include* defines? variants* globalCode=CODE? (contract|system)* EOF;
 
-include: INCLUDE STRING;
+include: INCLUDE STRING SEMI?;
 
-variants: VARIANTS v+=ident (COMMA? v+=ident)* ;
+variants: VARIANTS v+=ident (COMMA? v+=ident)* SEMI?;
 
 contract: automata | invariant;
 
@@ -57,7 +57,7 @@ defines: DEFINES LBRACE variable+ RBRACE;
 io: type=(INPUT|OUTPUT|STATE) variable (COMMA variable)*;
 history: HISTORY n=ident LPAREN INT RPAREN;
 
-variable: n+=ident (COMMA n+=ident)* COLON t=ident (':=' init=STRING)?;
+variable: n+=ident (COMMA n+=ident)* COLON t=ident (':=' init=expr)?;
 reaction: CODE;
 
 ident: Ident | HISTORY | DEFINES | VARIANTS | INCLUDE ;
@@ -81,7 +81,6 @@ expr:
     | terminalAtom
     ;
 
-QUESTION_MARK : '?' ;
 
 terminalAtom
     : LPAREN expr RPAREN                                              # paren
@@ -126,7 +125,7 @@ OR:'|';
 XOR:'xor';
 XNOR:'xnor';
 AND:'&';
-
+QUESTION_MARK : '?' ;
 DOT:'.';
 LPAREN:'(';
 RPAREN:')';

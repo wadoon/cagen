@@ -1,8 +1,8 @@
 package cagen.code
 
 import cagen.*
-import cagen.expr.SMVExpr
 import cagen.expr.CPrinter
+import cagen.expr.SMVExpr
 import java.io.PrintWriter
 
 /**
@@ -37,7 +37,7 @@ object CCodeUtilsSimplified {
             history.forEach { (n, d) ->
                 val t = signature.get(n)
                 (d downTo 1).forEach {
-                    out.println("h_${n}_$it = ${t!!.initValue.toCValue()};")
+                    out.println("h_${n}_$it = ${t!!.initValue.toCExpr()};")
                 }
             }
             out.println("}")
@@ -81,8 +81,8 @@ object CCodeUtilsSimplified {
             append("${it.type.toC()} $prefix${it.name};")
         }
         append("void init_$prefix${name}() {")
-        signature.all.filter { it.initValue.isNotBlank() }.forEach {
-            append("$prefix${it.name} = ${it.initValue.toCValue()};")
+        signature.all.filter { it.initValue != null }.forEach {
+            append("$prefix${it.name} = ${it.initValue.toCExpr()};")
         }
         append("}")
 
@@ -138,13 +138,13 @@ object CCodeUtilsSimplified {
         }
     }
 
-    fun SMVExpr.toCExpr() = CPrinter.toString(this)
-        /*this.replace("0sd32_", "")
-            // matches a = without a leading <, >, = or = as a suffix
-        .replace("(?<!(<|>|=))=(?!=)".toRegex(), "==")
-        .replace("&", "&&")
-        .replace("|", "||")
-         */
+    fun SMVExpr?.toCExpr() = this?.let { CPrinter.toString(this) } ?: ""
+    /*this.replace("0sd32_", "")
+        // matches a = without a leading <, >, = or = as a suffix
+    .replace("(?<!(<|>|=))=(?!=)".toRegex(), "==")
+    .replace("&", "&&")
+    .replace("|", "||")
+     */
 
     fun header(out: PrintWriter, model: Model) {
         out.println(
@@ -163,7 +163,13 @@ object CCodeUtilsSimplified {
             bool nondet_bool() {bool b;return b;}
             bool nondet_int() {int i;return i;}
             
-            ${model.globalDefines.joinToString("\n") { "const ${it.type.toC()} ${it.name} = ${it.initValue.trim('"').toCValue()};" }}
+            ${
+                model.globalDefines.joinToString("\n") {
+                    "const ${it.type.toC()} ${it.name} = ${
+                        it.initValue.toCExpr()
+                    };"
+                }
+            }
             
             ${model.globalCode}
         """.trimIndent()

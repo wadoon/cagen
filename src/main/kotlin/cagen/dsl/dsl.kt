@@ -92,7 +92,7 @@ interface SignatureLevel {
     fun output(type: Type, vararg name: String) = variables(name, type, signature.outputs)
 
     fun variables(name: Array<out String>, type: Type, target: MutableList<Variable>): List<Var> {
-        val v = name.map { Variable(it, type, "") }
+        val v = name.map { Variable(it, type) }
         target.addAll(v)
         return v.map { Var(it, SVariable(it.name)) }
     }

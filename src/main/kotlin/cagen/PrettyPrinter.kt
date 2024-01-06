@@ -11,20 +11,37 @@ import java.io.Writer
  * @version 1 (30.12.23)
  */
 class PrettyPrinter(writer: Writer = StringWriter()) {
+    companion object {
+        fun asString(block: PrettyPrinter.() -> Unit): String {
+            val sw = StringWriter()
+            PrettyPrinter(sw).apply(block)
+            return sw.toString()
+        }
+    }
+
     val out = CodeWriter(writer)
     fun pp(model: Model) {
         // model: include* defines? variants* globalCode=CODE? (contract|system)* EOF;
         printDefines(model.globalDefines)
         pp(model.variants)
-        pp(model.globalCode)
+        model.globalCode?.let { pp(it); out.println("") }
         pp(model.contracts)
         pp(model.systems)
     }
 
     fun pp(variants: VariantLattice) = variants.families.forEach { pp(it) }
     fun pp(it: VariantFamily) {
-        out.println("variants ${it.names.joinToString(", ")}")
+        out.print("variants ")
+
+        it.names.forEachLast() { hasMore, variant ->
+            pp(variant)
+            if (hasMore) out.print(", ")
+        }
+
+        out.println("")
     }
+
+    fun pp(variant: Variant) = out.print(variant.name)
 
     fun pp(code: String) = out.print("{= $code =}")
 
@@ -59,13 +76,33 @@ class PrettyPrinter(writer: Writer = StringWriter()) {
     }
 
     fun pp(t: CATransition) {
-        out.println("${t.from} -> ${t.to} :: ${t.contract.pre.toSMVExpr()} / ${t.contract.post.toSMVExpr()}")
+        out.println("${t.from} -> ${t.to} :: ${t.contract.pre.toSMVExpr()} ==> ${t.contract.post.toSMVExpr()}")
     }
 
     fun pp(vvGuard: VVGuard) {
         //vvguard: '#[' (vvexpr (COMMA? vvexpr)*)?  ']';
-        out.println("#[ ${vvGuard.values.joinToString(", ")}]")
+        out.print("#[ ")
+        vvGuard.values.forEachLast { hasMore, it ->
+            pp(it)
+            if (hasMore) out.print(", ")
+        }
+        out.println(" ]")
     }
+
+    fun pp(vvrange: VVRange) {
+        pp(vvrange.start)
+        if (!vvrange.isSingleton) {
+            out.print("..")
+            pp(vvrange.stop)
+        }
+    }
+
+    fun pp(vv: VV) = out.print(
+        when (vv) {
+            is Version -> "v${vv.number.joinToString(".")}"
+            is Variant -> vv.name
+        }
+    )
 
     fun pp(signature: Signature) {
         signature.inputs.sortedBy { it.name }.forEach { pp("input", it) }
@@ -74,7 +111,10 @@ class PrettyPrinter(writer: Writer = StringWriter()) {
     }
 
     fun pp(modifier: String, variable: Variable) {
-        out.println("$modifier ${variable.name} : ${variable.type} := ${variable.initValue}")
+        out.print("$modifier ${variable.name} : ${variable.type.name}")
+        if (variable.initValue != null)
+            out.println(" := ${variable.initValue}")
+        out.println("")
     }
 
     @JvmName("ppLU")
@@ -102,7 +142,7 @@ class PrettyPrinter(writer: Writer = StringWriter()) {
             out.block("\\defines {") {
                 defines.forEach {
                     //variable: n+=Ident (COMMA n+=Ident)* COLON t=Ident (':=' init=STRING)?;
-                    if (it.initValue.isNotBlank()) {
+                    if (it.initValue == null) {
                         printf("%s : %s", it.name, it.type)
                     } else {
                         printf("%s : %s", it.name, it.type, it.initValue)
@@ -110,5 +150,12 @@ class PrettyPrinter(writer: Writer = StringWriter()) {
                 }
             }
         }
+    }
+}
+
+public inline fun <T> Collection<T>.forEachLast(action: (hasMore: Boolean, T) -> Unit): Unit {
+    val last = size
+    for ((index, item) in this.withIndex()) {
+        action(index < size - 1, item)
     }
 }

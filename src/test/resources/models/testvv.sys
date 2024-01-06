@@ -1,0 +1,14 @@
+variants incr1, incr2
+
+contract Ctr {
+    input I : bool
+    output Q : int
+
+    init -> init :: I  ==> Q = old(Q)
+
+    #[ incr1 ]
+    init -> init :: I  ==> Q = old(Q+1)
+
+    #[ incr2 ]
+    init -> init :: I  ==> Q = old(Q+2)
+}

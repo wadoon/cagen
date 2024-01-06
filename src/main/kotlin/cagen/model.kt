@@ -14,13 +14,11 @@ data class Model(
     val contracts: MutableList<Contract> = arrayListOf(),
     val globalDefines: MutableList<Variable> = arrayListOf(),
     val variants: VariantLattice = VariantLattice(),
-    var globalCode: String = ""
+    var globalCode: String? = null
 ) {
     fun findVariant(text: String) = variants.findVariant(text)
-
-    fun activateVersion(current: List<VV>): Unit {
-        contracts.forEach { it.activateVersion(current) }
-    }
+    fun activateVersion(current: List<VV>) = contracts.forEach { it.activateVersion(current) }
+    fun findSystemByName(name: String): System? = systems.find { it.name == name }
 }
 
 
@@ -41,9 +39,9 @@ data class SystemType(val system: System) : Type {
         get() = system.name
 }
 
-data class Variable(val name: String, val type: Type, val initValue: String)
+data class Variable(val name: String, val type: Type, val initValue: SMVExpr? = null)
 
-val self = Variable("self", BuiltInType("self"), "")
+val self = Variable("self", BuiltInType("self"), null)
 
 data class Signature(
     val inputs: MutableList<Variable> = arrayListOf(),
@@ -277,6 +275,9 @@ data class VVGuard(val values: List<VVRange> = listOf()) {
 }
 
 data class VVRange(val start: VV, val stop: VV) {
+    val isSingleton: Boolean
+        get() = start == stop
+
     fun evaluate(current: List<VV>): Boolean = current.any {
         start.lessThanOrEqual(it) && it.lessThanOrEqual(stop)
     }
@@ -318,6 +319,19 @@ class Variant(val family: VariantFamily, val name: String) : VV() {
             is Variant -> if (family == other.family) value - other.value else null
             is Version -> null
         }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Variant) return false
+
+        if (name != other.name) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return name.hashCode()
+    }
 }
 
 data class Version(val number: List<Int>) : VV() {
