@@ -70,5 +70,5 @@
   smv: "stop & TTC < 0sd32_0"
 
 - in: "v = (a <= C1)"
-  c: "(v == ( a <= C1))"
-  smv: "v = (a <= C1)"
+  c: "(v == (a <= C1))"
+  smv: "v = a <= C1"

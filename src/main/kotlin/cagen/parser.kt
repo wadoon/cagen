@@ -113,7 +113,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
     //region version and variants
     override fun visitVariants(ctx: SystemDefParser.VariantsContext) {
         val vf = VariantFamily()
-        ctx.Ident().forEach { vf.add(it.text) }
+        ctx.ident().forEach { vf.add(it.text) }
         model.variants.add(vf)
     }
 
@@ -146,14 +146,14 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         val contracts = ctx.use_contracts().flatMap {
             it.use_contract().map { uc ->
                 UseContract(
-                    model.contracts.find { c -> c.name == uc.Ident().text }
-                        ?: error("Could not find contract ${uc.Ident().text}"),
+                    model.contracts.find { c -> c.name == uc.ident().text }
+                        ?: error("Could not find contract ${uc.ident().text}"),
                     parseSubst(uc.subst(), signature, self))
             }
         }
         model.systems.add(
             System(
-                ctx.Ident().text,
+                ctx.ident().text,
                 signature,
                 connections,
                 cleanCode(ctx.reaction()?.text),
@@ -235,8 +235,8 @@ class Translator : SystemDefBaseVisitor<Unit>() {
     private fun Contract.setParent(inherit: MutableList<SystemDefParser.Use_contractsContext>): Contract {
         val contracts = inherit.flatMap { seq ->
             seq.use_contract().map { uc ->
-                val contract: Contract = (model.contracts.find { c -> c.name == uc.Ident().text }
-                    ?: error("Could not find contract ${uc.Ident().text}"))
+                val contract: Contract = (model.contracts.find { c -> c.name == uc.ident().text }
+                    ?: error("Could not find contract ${uc.ident().text}"))
                 UseContract(contract, parseSubst(uc.subst(), signature, self))
             }
         }
@@ -318,7 +318,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         }
 
         override fun visitVariablewithprefix(ctx: SystemDefParser.VariablewithprefixContext): SMVExpr {
-            var variable: SMVExpr = SVariable(ctx.Ident().text)
+            var variable: SMVExpr = SVariable(ctx.ident().text)
 
             for (varprefix in ctx.varprefix()) {
                 when (varprefix) {
@@ -373,10 +373,10 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         override fun visitCasesExprAtom(ctx: SystemDefParser.CasesExprAtomContext): SMVExpr =
             super.visitCasesExprAtom(ctx)
 
-        override fun visitFieldaccess(ctx: SystemDefParser.FieldaccessContext): SMVExpr =
+        override fun visitFieldaccess(ctx: FieldaccessContext): SMVExpr =
             super.visitFieldaccess(ctx)
 
-        override fun visitArrayaccess(ctx: SystemDefParser.ArrayaccessContext): SMVExpr =
+        override fun visitArrayaccess(ctx: ArrayaccessContext): SMVExpr =
             super.visitArrayaccess(ctx)
 
         override fun visitIntegerLiteral(ctx: SystemDefParser.IntegerLiteralContext): SMVExpr {

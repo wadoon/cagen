@@ -2,15 +2,13 @@ grammar SystemDef;
 
 model: include* defines? variants* globalCode=CODE? (contract|system)* EOF;
 
-include: 'include' STRING;
+include: INCLUDE STRING;
 
-variants: 'variants' v+=Ident (COMMA? v+=Ident)* ;
-
-version: 'v' INT (DOT INT)*;
+variants: VARIANTS v+=ident (COMMA? v+=ident)* ;
 
 contract: automata | invariant;
 
-automata: CONTRACT name=Ident LBRACE
+automata: CONTRACT name=ident LBRACE
     io*
     history*
     prepost*
@@ -20,22 +18,23 @@ automata: CONTRACT name=Ident LBRACE
 
 vvguard: '#[' (vvexpr (COMMA? vvexpr)*)?  ']';
 vvexpr: vv ('..' vv)?;
-vv: version | Ident;
+vv: version | ident;
+version: VERSION;
 
-prepost: CONTRACT name=Ident ASSIGN pre=expr STRONG_ARROW post=expr;
+prepost: CONTRACT name=ident ASSIGN pre=expr STRONG_ARROW post=expr;
 
-transition: vvguard? from=Ident ARROW to=Ident DOUBLE_COLUMN
-    (contr=Ident| pre=expr STRONG_ARROW post=expr);
+transition: vvguard? from=ident ARROW to=ident DOUBLE_COLUMN
+    (contr=ident| pre=expr STRONG_ARROW post=expr);
 
 
-invariant: CONTRACT name=Ident LBRACE
+invariant: CONTRACT name=ident LBRACE
   io*
   history*
   pre=STRING STRONG_ARROW post=STRING
   use_contracts*
  RBRACE;
 
-system: REACTOR Ident LBRACE
+system: REACTOR name=ident LBRACE
         io*
         use_contracts*
         connection*
@@ -46,23 +45,24 @@ connection: from=ioport ARROW
              (LPAREN (to+=ioport)+ RPAREN
              | to+=ioport)
              ;
-ioport: (inst=Ident '.')? port=Ident;
+ioport: (inst=ident '.')? port=ident;
 
 
 use_contracts: CONTRACT use_contract (COMMA use_contract)*;
-use_contract: Ident ('[' (subst (COMMA subst)*)? ']')?;
-subst: local=Ident BARROW from=ioport;
+use_contract: ident ('[' (subst (COMMA subst)*)? ']')?;
+subst: local=ident BARROW from=ioport;
 
 defines: DEFINES LBRACE variable+ RBRACE;
 
 io: type=(INPUT|OUTPUT|STATE) variable (COMMA variable)*;
-history: HISTORY n=Ident LPAREN INT RPAREN;
+history: HISTORY n=ident LPAREN INT RPAREN;
 
-variable: n+=Ident (COMMA n+=Ident)* COLON t=Ident (':=' init=STRING)?;
+variable: n+=ident (COMMA n+=ident)* COLON t=ident (':=' init=STRING)?;
 reaction: CODE;
 
-ident: Ident | HISTORY | DEFINES;
+ident: Ident | HISTORY | DEFINES | VARIANTS | INCLUDE ;
 
+exprEOF: expr EOF;
 
 expr:
      unaryop=(NOT|MINUS) expr
@@ -85,17 +85,17 @@ QUESTION_MARK : '?' ;
 
 terminalAtom
     : LPAREN expr RPAREN                                              # paren
-    | name=Ident LPAREN expr ( COMMA  expr)* RPAREN                   # functionExpr
+    | name=ident LPAREN expr ( COMMA  expr)* RPAREN                   # functionExpr
     | casesExpr                                                       # casesExprAtom
-    | value=Ident varprefix*                                          # variablewithprefix
+    | value=ident varprefix*                                          # variablewithprefix
     | value=INT                                                       # integerLiteral
     | value=FLOAT                                                     # floatLiteral
-    | value='TRUE'                                                    # trueExpr
-    | value='FALSE'                                                   # falseExpr
+    | value=('TRUE'|'true')                                           # trueExpr
+    | value=('FALSE'|'false')                                         # falseExpr
     | value=WORD_LITERAL                                              # wordValue
     ;
 
-varprefix : DOT dotted=Ident            #fieldaccess
+varprefix : DOT dotted=ident            #fieldaccess
           | LBRACKET index=expr RBRACKET #arrayaccess
           ;
 
@@ -104,6 +104,7 @@ caseBranch : cond=expr COLON val=expr SEMI;
 
 
 // Lexer
+SEMI:';';
 NOT: '!';
 MINUS:'-';
 PLUS:'+';
@@ -154,14 +155,16 @@ COMMA: ',';
 ASSIGN : ':=' ;
 STRONG_ARROW : '==>' ;
 DOUBLE_COLUMN : '::' ;
+VARIANTS: 'variants';
+INCLUDE: 'include';
 
 
 WORD_LITERAL:
     '0' ('u' | 's')? ('b' | 'B' | 'o' | 'O' | '_' | 'd' | 'D' | 'h' | 'H') INT? '_' ('a'..'f' | 'A.' . 'F' | INT)*;
 
-SEMI:';';
-
-FLOAT: INT '.' INT;
 INT: [0-9]+;
+FLOAT: INT '.' INT;
 Ident: [a-zA-Z_][a-zA-Z_0-9]*;
+VERSION: 'v' INT ('.' INT)*;
+
 ERROR: .;
