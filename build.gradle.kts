@@ -18,7 +18,7 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.2")
 
     // graph drawing
-    implementation("org.eclipse.elk:org.eclipse.elk.core:0.8.1")
+    implementation("org.eclipse.elk:org.eclipse.elk.core:0.9.0")
     implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.9.0")
     implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.9.0")
 
