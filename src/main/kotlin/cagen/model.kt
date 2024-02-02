@@ -1,3 +1,5 @@
+@file:Suppress("MemberVisibilityCanBePrivate", "unused")
+
 package cagen
 
 import cagen.expr.SMVExpr
@@ -25,8 +27,6 @@ data class Model(
 sealed interface Component {
     val name: String
     val signature: Signature
-    val nodeDotStyle: String
-        get() = ""
 }
 
 sealed interface Type {
@@ -102,7 +102,7 @@ data class UseContract(val contract: Contract, val variableMap: MutableList<Pair
     }
 }
 
-private fun PrePost.prefix(prefix: String): PrePost = copy(pre.prefix(prefix), post.prefix(prefix))
+private fun PrePost.prefix(prefix: String): PrePost = copy(pre = pre.prefix(prefix), post = post.prefix(prefix))
 
 data class Contract(
     override val name: String,
@@ -150,8 +150,6 @@ private operator fun Iterable<CATransition>.times(transitions: Iterable<CATransi
             )
         }
     }
-
-val counter = AtomicInteger()
 
 data class PrePost(
     val pre: SMVExpr,
@@ -356,10 +354,6 @@ data class Version(val number: List<Int>) : VV() {
 }
 
 data class VariantLattice(val families: MutableList<VariantFamily> = mutableListOf()) {
-    fun evaluate(expr: VVGuard, current: List<VV>): Boolean {
-        return false
-    }
-
     fun findVariant(text: String): Variant? {
         val families = families.filter { text in it }
         return when {

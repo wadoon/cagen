@@ -44,7 +44,7 @@ object CCodeUtilsSimplified {
 
             out.println("void next_${name}() {")
             history.forEach { (n, d) ->
-                val t = signature.get(n)?.type?.toC()
+                // val t = signature.get(n)?.type?.toC()
                 (d downTo 1).forEach {
                     out.println("h_${n}_$it = h_${n}_${it - 1};")
                     out.println("h_${n}_0 = $n;")
@@ -86,7 +86,7 @@ object CCodeUtilsSimplified {
         }
         append("}")
 
-        append("void next_$prefix${name}() {");
+        append("void next_$prefix${name}() {")
         signature.all.forEach {
             append("${it.type.toC()} ${it.name} = $prefix${it.name};")
         }
@@ -97,23 +97,22 @@ object CCodeUtilsSimplified {
         append("}")
     }
 
-    fun writeGlueCode(system: System, contract: UseContract, out: PrintWriter) = with(system) {
-        with(contract) {
-            fun append(s: String) = out.println(s)
-            append("void main() {")
-            append("init_sys_${system.name}();")
-            append("init_${contract.contract.name}();")
-            append("while(true) {")
-            for (input in system.signature.inputs) {
-                append("sys_${input.name} = nondet_${input.type.toC()}();")
-            }
-            append("next_sys_${system.name}();")
-            contract.variableMap.forEach { (cv, sv) ->
-                val n = CCodeUtils.applySubst(sv)
-                append("$cv = sys_${n};")
-            }
-            append(
-                """
+    fun writeGlueCode(system: System, contract: UseContract, out: PrintWriter) {
+        fun append(s: String) = out.println(s)
+        append("void main() {")
+        append("init_sys_${system.name}();")
+        append("init_${contract.contract.name}();")
+        append("while(true) {")
+        for (input in system.signature.inputs) {
+            append("sys_${input.name} = nondet_${input.type.toC()}();")
+        }
+        append("next_sys_${system.name}();")
+        contract.variableMap.forEach { (cv, sv) ->
+            val n = CCodeUtils.applySubst(sv)
+            append("$cv = sys_${n};")
+        }
+        append(
+            """
                 next_${contract.contract.name}();
                 #ifdef SEAHORN
                 sassert(!_error_);
@@ -121,30 +120,14 @@ object CCodeUtilsSimplified {
                 assert(!_error_);
                 #endif
                 """.trimIndent()
-            )
-            append("}")
-            append("}")
-        }
+        )
+        append("}")
+        return append("}")
     }
 
     fun Type.toC(): String = name
 
-    public fun String.toCValue() = when (this) {
-        "TRUE" -> 1
-        "FALSE" -> 0
-        else -> when {
-            startsWith("0") -> this.substringAfter("_")
-            else -> this
-        }
-    }
-
     fun SMVExpr?.toCExpr() = this?.let { CPrinter.toString(this) } ?: ""
-    /*this.replace("0sd32_", "")
-        // matches a = without a leading <, >, = or = as a suffix
-    .replace("(?<!(<|>|=))=(?!=)".toRegex(), "==")
-    .replace("&", "&&")
-    .replace("|", "||")
-     */
 
     fun header(out: PrintWriter, model: Model) {
         out.println(

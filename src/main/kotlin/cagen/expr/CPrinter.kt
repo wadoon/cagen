@@ -1,6 +1,5 @@
 package cagen.expr
 
-import cagen.expr.*
 import cagen.expr.SBinaryOperator.*
 
 class CPrinter : SMVAstVisitor<String> {

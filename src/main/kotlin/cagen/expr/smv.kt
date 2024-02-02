@@ -1,6 +1,7 @@
+@file:Suppress("unused", "unused", "UNUSED_VARIABLE")
+
 package cagen.expr
 
-import org.antlr.v4.runtime.Token
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.util.*
@@ -151,13 +152,13 @@ data class SFunction(
     val name: String,
     var arguments: List<SMVExpr>
 ) : SMVExpr() {
-    var typeSolver: FunctionTypeSolver? = null
+    private var typeSolver: FunctionTypeSolver? = null
 
     override val dataType: SMVType?
         get() = typeSolver?.invoke(this)
 
     constructor(funcName: String, vararg expr: SMVExpr) :
-            this(funcName, Arrays.asList(*expr))
+            this(funcName, listOf(*expr))
 
     override fun clone() = SFunction(name, arguments.map { it.clone() })
 
@@ -596,7 +597,7 @@ enum class SBinaryOperator(private val symbol: String, private val precedence: I
     companion object {
 
         fun findBySymbol(symbol: String): SBinaryOperator? {
-            for (op in values()) {
+            for (op in entries) {
                 if (op.symbol.equals(symbol, ignoreCase = true)) {
                     return op
                 }
@@ -619,7 +620,7 @@ data class SQuantified(
     override val dataType: SMVTypes.BOOLEAN
         get() = SMVTypes.BOOLEAN
 
-    constructor(operator: STemporalOperator, vararg expr: SMVExpr) : this(operator, Arrays.asList<SMVExpr>(*expr))
+    constructor(operator: STemporalOperator, vararg expr: SMVExpr) : this(operator, mutableListOf<SMVExpr>(*expr))
 
     override fun prefix(prefix: String): SQuantified =
         SQuantified(
@@ -682,13 +683,6 @@ enum class STemporalOperator(
 
     enum class TemporalLanguage {
         LTL, CTL, PSL
-    }
-
-    companion object {
-
-        fun valueOf(op: Token): STemporalOperator {
-            return valueOf(op.text)
-        }
     }
 }
 
@@ -811,7 +805,7 @@ abstract class SMVAstDefaultVisitorNN<T> : SMVAstVisitor<T> {
 open class SMVAstScanner : SMVAstVisitor<Unit> {
     override fun visit(top: SMVAst) = defaultVisit(top)
     override fun visit(v: SVariable) = defaultVisit(v)
-    protected fun defaultVisit(ast: SMVAst) {}
+    protected open fun defaultVisit(ast: SMVAst) {}
 
     override fun visit(be: SBinaryExpression) {
         be.left.accept(this)
@@ -935,13 +929,16 @@ abstract class SMVAstMutableVisitor : SMVAstVisitor<SMVAst> {
 
     override fun visit(quantified: SQuantified): SMVExpr {
         quantified.quantified = quantified.quantified
-            .map({ it.accept(this) as SMVExpr })
+            .map { it.accept(this) as SMVExpr }
             .toMutableList()
         return quantified
     }
 
     private fun <E : SMVAst> List<E>.visitAll(): MutableList<E> =
-        map { it.accept(this@SMVAstMutableVisitor) as E }.toMutableList()
+        map {
+            @Suppress("UNCHECKED_CAST")
+            it.accept(this@SMVAstMutableVisitor) as E
+        }.toMutableList()
 }
 
 class VariableReplacer(val map: Map<out SMVExpr, SMVExpr>) : SMVAstMutableVisitor() {
@@ -950,8 +947,8 @@ class VariableReplacer(val map: Map<out SMVExpr, SMVExpr>) : SMVAstMutableVisito
     }
 }
 
-open class ExpressionReplacer(protected val assignments: Map<out SMVExpr, SMVExpr>) : SMVAstMutableVisitor() {
-    var changed = false
+open class ExpressionReplacer(val assignments: Map<out SMVExpr, SMVExpr>) : SMVAstMutableVisitor() {
+    private var changed = false
     protected open fun replace(x: SMVExpr): SMVExpr {
         val a = assignments[x]
         return if (a == null)
@@ -963,11 +960,11 @@ open class ExpressionReplacer(protected val assignments: Map<out SMVExpr, SMVExp
     }
 
     override fun visit(v: SVariable): SMVExpr = replace(v)
-    override fun visit(v: SBinaryExpression) = replace(v)
-    override fun visit(v: SUnaryExpression) = replace(v)
-    override fun visit(v: SLiteral) = replace(v)
-    override fun visit(v: SFunction) = replace(v)
-    override fun visit(v: SQuantified) = replace(v)
+    override fun visit(be: SBinaryExpression) = replace(be)
+    override fun visit(ue: SUnaryExpression) = replace(ue)
+    override fun visit(l: SLiteral) = replace(l)
+    override fun visit(func: SFunction) = replace(func)
+    override fun visit(quantified: SQuantified) = replace(quantified)
 }
 
 open class SMVAstMutableTraversal(val visitor: SMVAstMutableVisitor) : SMVAstMutableVisitor() {
@@ -1030,11 +1027,11 @@ open class SMVAstMutableTraversal(val visitor: SMVAstMutableVisitor) : SMVAstMut
     }
 }
 
-open class ExpressionReplacerRecur(val assignments: Map<out SMVExpr, SMVExpr>) : SMVAstMutableVisitor() {
-    val traversal = SMVAstMutableTraversal(this)
-    var changed: Boolean = false
+open class ExpressionReplacerRecur(private val assignments: Map<out SMVExpr, SMVExpr>) : SMVAstMutableVisitor() {
+    private val traversal = SMVAstMutableTraversal(this)
+    private var changed: Boolean = false
 
-    protected fun replace(x: SMVExpr): SMVExpr {
+    private fun replace(x: SMVExpr): SMVExpr {
         var a = x
         do {
             val nxt = assignments[a]
@@ -1047,11 +1044,11 @@ open class ExpressionReplacerRecur(val assignments: Map<out SMVExpr, SMVExpr>) :
     }
 
     override fun visit(v: SVariable): SMVExpr = replace(v)
-    override fun visit(v: SBinaryExpression): SMVExpr = replace(v)
-    override fun visit(v: SUnaryExpression): SMVExpr = (replace(v))
-    override fun visit(v: SLiteral): SMVExpr = (replace(v))
-    override fun visit(v: SFunction): SMVExpr = (replace(v))
-    override fun visit(v: SQuantified): SMVExpr = (replace(v))
+    override fun visit(be: SBinaryExpression): SMVExpr = replace(be)
+    override fun visit(ue: SUnaryExpression): SMVExpr = replace(ue)
+    override fun visit(l: SLiteral): SMVExpr = replace(l)
+    override fun visit(func: SFunction): SMVExpr = replace(func)
+    override fun visit(quantified: SQuantified): SMVExpr = replace(quantified)
 }
 
 
@@ -1077,7 +1074,7 @@ data class SMVWordType(
     override fun valueOf(str: String) = SWordLiteral(read(str), this)
 
     override fun read(str: String): BigInteger {
-        val re = Pattern.compile("(?<sign>-)?0(?<t>s|u)d(?<w>\\d+)_(?<v>\\d+)")
+        val re = Pattern.compile("(?<sign>-)?0(?<t>[su])d(?<w>\\d+)_(?<v>\\d+)")
         val m = re.matcher(str)
         if (m.matches()) {
             val s = m.group("sign")?.let { -1 } ?: 1
@@ -1195,11 +1192,11 @@ data class EnumType(var values: List<String>) : SMVType {
 
     override fun allowedValue(obj: Any): Boolean = obj is String
 
-    override fun valueOf(value: String): SLiteral {
-        if (!values.contains(value)) {
+    override fun valueOf(str: String): SLiteral {
+        if (!values.contains(str)) {
             throw IllegalArgumentException()
         }
-        return SEnumLiteral(value, this)
+        return SEnumLiteral(str, this)
     }
 
     override fun toString(): String {
@@ -1220,7 +1217,7 @@ data class ModuleType(
     override fun allowedValue(obj: Any): Boolean = obj is String
 
     constructor(name: String, vararg variables: SVariable) :
-            this(name, Arrays.asList<SVariable>(*variables))
+            this(name, mutableListOf<SVariable>(*variables))
 
     override fun toString(): String {
         val params = if (parameters.isNotEmpty()) {

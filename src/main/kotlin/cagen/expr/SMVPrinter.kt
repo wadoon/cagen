@@ -2,6 +2,7 @@ package cagen.expr
 
 import java.io.*
 import java.util.*
+import kotlin.math.max
 
 class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
     val sort = true
@@ -282,10 +283,9 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
  * @author weigla (15.06.2014)
  * @version 2
  */
-open class CodeWriter(var stream: Writer = StringWriter()) : Appendable by stream {
-
-    var uppercaseKeywords = true
-    var ident = "    "
+open class CodeWriter(val stream: Writer = StringWriter()) : Appendable by stream {
+    private val uppercaseKeywords = true
+    private val ident = "    "
     protected var identDepth = 0
 
     fun write(x: String): CodeWriter {
@@ -306,7 +306,7 @@ open class CodeWriter(var stream: Writer = StringWriter()) : Appendable by strea
     }
 
     fun decreaseIndent(): CodeWriter {
-        identDepth = Math.max(identDepth - 1, 0)
+        identDepth = max(identDepth - 1, 0)
         return this
     }
 

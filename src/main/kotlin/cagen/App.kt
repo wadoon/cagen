@@ -1,3 +1,5 @@
+@file:Suppress("unused", "MemberVisibilityCanBePrivate")
+
 package cagen
 
 import cagen.Util.infoln
@@ -19,27 +21,20 @@ import kotlin.io.path.div
 import kotlin.io.path.writeText
 
 object Util {
-    private const val logFormat = "[%5d] %s%s%s"
+    private const val LOG_FORMAT = "[%5d] %s%s%s"
     private val startTime = System.currentTimeMillis()
     private const val ESC = 27.toChar()
 
     var verbose = false
 
     fun putln(s: String, colorOn: String = "", colorOff: String = "") =
-        println(logFormat.format((System.currentTimeMillis() - startTime), colorOn, s, colorOff))
+        println(LOG_FORMAT.format((System.currentTimeMillis() - startTime), colorOn, s, colorOff))
 
     fun putln(s: String, color: Int) = putln(s, "$ESC[${color}m", "$ESC[0m")
 
     fun infoln(s: String) = putln(s)
     fun warnln(s: String) = putln(s, 32)
     fun errorln(s: String) = putln(s, 33)
-
-    /*private var printedErrors = mutableSetOf<String>()
-    fun errordpln(s: String) {
-        if (s !in printedErrors) {
-            printedErrors.add(s); errorln(s)
-        }
-    }*/
 }
 
 class AppContext(verbose: Boolean, var version: String? = null, var variants: List<String> = listOf()) {
@@ -70,7 +65,7 @@ class Tool : CliktCommand(allowMultipleSubcommands = true) {
     override fun run() {}
 }
 
-class DotCommmand : CliktCommand() {
+class DotCommand : CliktCommand() {
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val tempFile by option("-o", "--output").default(File.createTempFile("cagen", ".dot").toString())
     val watch by option().flag()
@@ -232,5 +227,5 @@ class Verify : CliktCommand() {
 
 
 fun main(args: Array<String>) = Tool()
-    .subcommands(ExtractCode(), DotCommmand(), TikzCommand(), Verify(), ConstructCA(), VVSlice())
+    .subcommands(ExtractCode(), DotCommand(), TikzCommand(), Verify(), ConstructCA(), VVSlice())
     .main(args)

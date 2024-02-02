@@ -33,7 +33,7 @@ class PrettyPrinter(writer: Writer = StringWriter()) {
     fun pp(it: VariantFamily) {
         out.print("variants ")
 
-        it.names.forEachLast() { hasMore, variant ->
+        it.names.forEachLast { hasMore, variant ->
             pp(variant)
             if (hasMore) out.print(", ")
         }
@@ -153,8 +153,7 @@ class PrettyPrinter(writer: Writer = StringWriter()) {
     }
 }
 
-public inline fun <T> Collection<T>.forEachLast(action: (hasMore: Boolean, T) -> Unit): Unit {
-    val last = size
+inline fun <T> Collection<T>.forEachLast(action: (hasMore: Boolean, T) -> Unit) {
     for ((index, item) in this.withIndex()) {
         action(index < size - 1, item)
     }

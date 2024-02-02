@@ -1,3 +1,5 @@
+@file:Suppress("MemberVisibilityCanBePrivate")
+
 package cagen
 
 import cagen.expr.*
@@ -224,7 +226,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         return sig
     }
 
-    override fun visitInvariant(ctx: InvariantContext) {
+    /*override fun visitInvariant(ctx: InvariantContext) {
         /*contracts.add(
             AGContract(
                 ctx.name.text,
@@ -233,7 +235,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
                 ctx.pre.text.trim('"'), ctx.post.text.trim('"')
             ).setParent(ctx.use_contracts())
         )*/
-    }
+    }*/
 
     private fun Contract.setParent(inherit: MutableList<Use_contractsContext>): Contract {
         val contracts = inherit.flatMap { seq ->
