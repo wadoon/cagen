@@ -1,6 +1,6 @@
 contract Interval {
     output y : int
-    a -> a :: "TRUE" ==> "-0sd32_128 <= y & y <= 0sd32_128"
+    a -> a :: TRUE ==> -0sd32_128 <= y & y <= 0sd32_128
 }
 
 contract UpDown {
@@ -9,14 +9,14 @@ contract UpDown {
 
     history cnt(1)
 
-    uP -> uP :: " tick" ==> "-0sd32_128 < cnt & h_cnt_1 < cnt & cnt < 0sd32_128"
-    uP -> uP :: "! tick" ==> "h_cnt_1 = cnt"
+    uP -> uP ::  tick ==> -0sd32_128 < cnt & h_cnt_1 < cnt & cnt < 0sd32_128
+    uP -> uP :: ! tick ==> h_cnt_1 = cnt
 
-    DOWN -> DOWN :: " tick" ==> "h_cnt_1 > cnt & cnt > -0sd32_128"
-    DOWN -> DOWN :: "! tick" ==> "h_cnt_1 = cnt"
+    DOWN -> DOWN ::  tick ==> h_cnt_1 > cnt & cnt > -0sd32_128
+    DOWN -> DOWN :: ! tick ==> h_cnt_1 = cnt
 
-    uP -> DOWN :: "tick" ==> "cnt = 0sd32_128"
-    DOWN -> uP :: "tick" ==> "cnt =-0sd32_128"
+    uP -> DOWN :: tick ==> cnt = 0sd32_128
+    DOWN -> uP :: tick ==> cnt =-0sd32_128
 
     contract Interval[y <- cnt]
 }

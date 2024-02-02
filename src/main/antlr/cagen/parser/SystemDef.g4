@@ -6,7 +6,7 @@ include: INCLUDE STRING SEMI?;
 
 variants: VARIANTS v+=ident (COMMA? v+=ident)* SEMI?;
 
-contract: automata | invariant;
+contract: automata;
 
 automata: CONTRACT name=ident LBRACE
     io*
@@ -15,6 +15,15 @@ automata: CONTRACT name=ident LBRACE
     transition*
     use_contracts*
     RBRACE;
+
+/*
+invariant: CONTRACT name=ident LBRACE
+  io*
+  history*
+  prepost
+  use_contracts*
+ RBRACE;
+*/
 
 vvguard: '#[' (vvexpr (COMMA? vvexpr)*)?  ']';
 vvexpr: vv ('..' vv)?;
@@ -26,13 +35,6 @@ prepost: CONTRACT name=ident ASSIGN pre=expr STRONG_ARROW post=expr;
 transition: vvguard? from=ident ARROW to=ident DOUBLE_COLUMN
     (contr=ident| pre=expr STRONG_ARROW post=expr);
 
-
-invariant: CONTRACT name=ident LBRACE
-  io*
-  history*
-  pre=STRING STRONG_ARROW post=STRING
-  use_contracts*
- RBRACE;
 
 system: REACTOR name=ident LBRACE
         io*

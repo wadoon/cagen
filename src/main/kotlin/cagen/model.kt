@@ -310,7 +310,7 @@ data class VariantFamily(val names: MutableList<Variant> = mutableListOf()) {
     fun get(text: String): Variant? = names.find { text == it.name }
 }
 
-class Variant(val family: VariantFamily, val name: String) : VV() {
+data class Variant(val family: VariantFamily, val name: String) : VV() {
     val value
         get() = family.index(this)
 

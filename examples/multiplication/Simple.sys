@@ -3,14 +3,14 @@ contract E {}
 contract Bigger {
     input x : int
     output y : int
-    "true" ==> "x <= y"
+    a -> a :: true ==> x <= y
 }
 
 
 contract D {
     input x : int
     output y : int
-    "true" ==> "y == x + x"
+    a -> a :: true ==> y = x + x
 }
 
 reactor Doubler  {
