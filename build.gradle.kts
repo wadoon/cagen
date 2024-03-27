@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.0.0-Beta4"
+    id("org.jetbrains.kotlin.jvm") version "2.0.0-Beta5"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     application
     antlr
