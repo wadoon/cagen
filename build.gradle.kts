@@ -19,7 +19,7 @@ dependencies {
 
     // graph drawing
     implementation("org.eclipse.elk:org.eclipse.elk.core:0.9.0")
-    implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.9.0")
+    implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.9.1")
     implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.9.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
