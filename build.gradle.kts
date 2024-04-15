@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.0.0-Beta5"
+    id("org.jetbrains.kotlin.jvm") version "2.0.0-RC1"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     application
     antlr
@@ -18,9 +18,9 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.2")
 
     // graph drawing
-    implementation("org.eclipse.elk:org.eclipse.elk.core:0.9.0")
-    implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.9.0")
-    implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.9.0")
+    implementation("org.eclipse.elk:org.eclipse.elk.core:0.9.1")
+    implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.9.1")
+    implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.9.1")
 
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
