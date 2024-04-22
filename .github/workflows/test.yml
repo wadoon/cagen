@@ -30,12 +30,12 @@ jobs:
           cache: 'gradle'
 
       - name: Build with Gradle
-        uses: gradle/gradle-build-action@v3.3.0
+        uses: gradle/gradle-build-action@v3.3.1
         with:
           arguments: --continue test
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.3.2
         if: success() || failure()
         with:
           name: test-results
