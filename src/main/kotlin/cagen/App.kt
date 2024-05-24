@@ -6,10 +6,7 @@ import cagen.Util.infoln
 import cagen.code.CCodeUtils
 import cagen.draw.Dot
 import cagen.draw.TikzPrinter
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.findObject
-import com.github.ajalt.clikt.core.findOrSetObject
-import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.core.*
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.file
@@ -62,7 +59,10 @@ class Tool : CliktCommand(allowMultipleSubcommands = true) {
 
     val context by findOrSetObject { AppContext(verbose, version, variants) }
 
-    override fun run() {}
+    override fun run() {
+        // Need to access context once so the AppContext is created and can be found by subcommands via `findObject`
+        context
+    }
 }
 
 class DotCommand : CliktCommand() {
@@ -182,10 +182,10 @@ class ConstructCA : CliktCommand(name = "construct") {
 class ExtractCode : CliktCommand() {
     val outputFolder by option("-o", "--output").file().default(File("output"))
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
-    val context by findObject<AppContext>()
+    val context by requireObject<AppContext>()
 
     override fun run() {
-        val (sys, contracts) = context!!.load(inputFile)
+        val (sys, contracts) = context.load(inputFile)
         infoln("Write to $outputFolder")
         outputFolder.mkdirs()
         sys.forEach {
@@ -202,10 +202,11 @@ class Verify : CliktCommand() {
     val outputFolder by option("-o", "--output").file().default(File("output"))
     val inputFile by argument("SYSTEM")
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
-    val context by findObject<AppContext>()
+    val context by requireObject<AppContext>()
+
 
     override fun run() {
-        val model = context!!.load(inputFile)
+        val model: Model = context.load(inputFile)
         val pos = createProofObligations(model)
         infoln("Proof Obligation found:")
         for (po in pos) {
@@ -224,7 +225,6 @@ class Verify : CliktCommand() {
         )
     }
 }
-
 
 fun main(args: Array<String>) = Tool()
     .subcommands(ExtractCode(), DotCommand(), TikzCommand(), Verify(), ConstructCA(), VVSlice())
