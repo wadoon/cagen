@@ -28,6 +28,14 @@ object CCodeUtils {
         is SystemType -> "${type.name}_state"
     }
 
+    private fun getAToX(type: Type): String =
+        when (type.name) {
+           "int", "bool", "short" -> "atoi"
+           "long" -> "atol"
+           "float", "double" -> "atof"
+           else -> type.name
+       }
+
     private fun writeCodeFile(system: System, folder: Path) {
         val signature = system.signature
         val name = system.name
@@ -74,7 +82,7 @@ object CCodeUtils {
             ${
             signature.instances.map { it.type.name }.toSet()
                 .joinToString("\n") { "#include \"$it.h\"" }
-        }
+            }
 
             typedef struct ${name}_state {
               // Inputs
@@ -230,10 +238,100 @@ object CCodeUtils {
                         next_${system.name}(&__state);
                         ${
                 contract.variableMap.joinToString("") { (cv, sv) ->
+                    
                     val n = applySubst(sv)
                     "__cstate.$cv = __state.${n};"
                 }
             }
+                        next_${contract.contract.name}(&__cstate);
+                        assert(__cstate._error_);
+                    }
+                }
+            """.trimIndent()
+        outputFile.writeText(cfile)
+    }
+
+    fun writeMonitorCode(system: System, contract: UseContract, outputFile: Path) {
+        val cfile =
+            """ 
+                #include <stdlib.h>
+                #include <stdio.h>
+                #include <string.h>
+                #include <stdbool.h>
+                #define TRUE true
+                #define FALSE false
+            
+                #include <assert.h>
+                #include "${contract.contract.name}.h"
+                #include "${system.name}.h"
+
+                struct kv {
+                    char *key;
+                    char *val;
+                };
+
+                int NUM_INPUTS = ${system.signature.inputs.size};
+                
+                int main(int argc, char *argv[]) {
+                    if (argc <= 1)
+                        exit(EXIT_FAILURE);
+
+                    FILE *trace = fopen(argv[1], "r");
+                    
+                    ${system.name}_state __state; 
+                    init_${system.name}(&__state);
+                    
+                    ${contract.contract.name}_state __cstate; 
+                    init_${contract.contract.name}(&__cstate);
+                    
+                    char *line = NULL;
+                    size_t n = 0;
+                    int l = 0;
+                    while(getline(&line, &n, trace) != -1) {
+                        l += 1;
+                        
+                        // Split
+                        struct kv *fields = malloc(sizeof(struct kv) * NUM_INPUTS);
+                        int i = 0;
+                        for (char *field = strtok(line, ",");
+                             field != NULL;
+                             field = strtok(NULL, ","), ++i) {
+                            fields[i].key = strtok(field, "=");
+                            fields[i].val = strtok(NULL, "");
+                        }
+                        
+                        ${system.signature.inputs.joinToString { 
+                            (v, t) -> "bool found_$v = false;"
+                        }}
+                        
+                        for (int i = 0; i < NUM_INPUTS; ++i) {
+                            ${system.signature.inputs.joinToString { (v, t) -> 
+                                """
+                                    if (strcmp(fields[i].key, "$v") == 0) {
+                                        if (found_$v) {
+                                            exit(EXIT_FAILURE);
+                                        } else {
+                                            __state.$v == ${getAToX(t)}(fields[i].val);
+                                            found_$v = true;
+                                        }
+                                    } else {
+                                        exit(EXIT_FAILURE);
+                                    }
+                                """.trimIndent()
+                            }}
+                        }
+                        
+                        ${system.signature.inputs.joinToString {
+                            (v, t) -> "if (!found_$v) { exit(EXIT_FAILURE); }"
+                        }}
+                        
+                        next_${system.name}(&__state);
+                        
+                        ${contract.variableMap.joinToString("") { (cv, sv) ->
+                            val n = applySubst(sv)
+                            "__cstate.$cv = __state.${n};"
+                        }}
+                        
                         next_${contract.contract.name}(&__cstate);
                         assert(__cstate._error_);
                     }

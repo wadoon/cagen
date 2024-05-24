@@ -6,6 +6,7 @@ import cagen.modelchecker.SmvUtils
 import cagen.modelchecker.asSmvType
 import java.io.PrintWriter
 import java.nio.file.Files
+import java.nio.file.OpenOption
 import java.nio.file.Path
 import kotlin.io.path.bufferedWriter
 import kotlin.io.path.div
@@ -30,6 +31,7 @@ class ImplPOMonitor(val model: Model, val system: System, val contract: UseContr
         CCodeUtils.writeContractAutomata(contract.contract, outputFolder)
         CCodeUtils.writeSystemCode(system, outputFolder)
         CCodeUtils.writeGlueCode(system, contract, outputFolder / "$name.c")
+        CCodeUtils.writeMonitorCode(system, contract, outputFolder / "PO_${system.name}_monitor_${contract.contract.name}.c")
 
         return listOf(
             POTask("${name}_cbmc", "cbmc --unwind 10 $name.c"),
@@ -156,7 +158,7 @@ class ContractRefinementPO(val model: Model, val contract: Contract, val refined
                     + SmvUtils.toSmv(model, refined.contract) + "\n----\n" + createHistoryModules(
                 contract,
                 refined.contract
-            )
+            ),
         )
 
         filename.parent.resolve("ic3.xmv").writeText(
