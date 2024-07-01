@@ -22,9 +22,9 @@ dependencies {
     implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.9.1")
     implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.9.1")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.3")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.3")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.3")
 
     implementation("org.antlr:antlr4-runtime:4.13.1")
     antlr("org.antlr:antlr4:4.13.1")
