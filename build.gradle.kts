@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.0.20"
+    id("org.jetbrains.kotlin.jvm") version "2.0.21"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     application
     antlr
@@ -14,7 +14,7 @@ repositories {
 dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("com.github.ajalt.clikt:clikt:5.0.0")
+    implementation("com.github.ajalt.clikt:clikt:5.0.1")
     implementation("org.yaml:snakeyaml:2.3")
 
     // graph drawing
@@ -22,9 +22,9 @@ dependencies {
     implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.9.1")
     implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.9.1")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.11.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.11.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.11.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.11.2")
 
     implementation("org.antlr:antlr4-runtime:4.13.2")
     antlr("org.antlr:antlr4:4.13.2")
