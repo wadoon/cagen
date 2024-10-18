@@ -61,12 +61,16 @@ class Tool : CliktCommand() {
 
     val context by findOrSetObject { AppContext(verbose, version, variants) }
 
-    override fun run() {}
+    override fun run() {
+        // No actions for top level command.
+    }
 }
+
+private const val _OUTPUT = "--output"
 
 class DotCommand : CliktCommand() {
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
-    val tempFile by option("-o", "--output").default(File.createTempFile("cagen", ".dot").toString())
+    val tempFile by option("-o", _OUTPUT).default(File.createTempFile("cagen", ".dot").toString())
     val watch by option().flag()
     val topLevelSystem by option("--tl", "--entry").required()
 
@@ -125,7 +129,7 @@ class DotCommand : CliktCommand() {
 class TikzCommand : CliktCommand() {
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val fragment by option().flag()
-    val output by option("-o", "--output").default("-")
+    val output by option("-o", _OUTPUT).default("-")
 
     val context by findObject<AppContext>()
 
@@ -147,7 +151,7 @@ class VVSlice : CliktCommand(name = "vvslice") {
     |Use with an empty version or variants results into a pretty printed and identical system.""".trimMargin()
 
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
-    val output by option("-o", "--output").default("-")
+    val output by option("-o", _OUTPUT).default("-")
 
     val context by findObject<AppContext>()
 
@@ -157,8 +161,8 @@ class VVSlice : CliktCommand(name = "vvslice") {
         if (output == "-") {
             println(result)
         } else {
+            File(output).writeText(result)
         }
-        File(output).writeText(result)
     }
 }
 
@@ -180,7 +184,7 @@ class ConstructCA : CliktCommand(name = "construct") {
 
 
 class ExtractCode : CliktCommand() {
-    val outputFolder by option("-o", "--output").file().default(File("output"))
+    val outputFolder by option("-o", _OUTPUT).file().default(File("output"))
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val context by findObject<AppContext>()
 
@@ -199,7 +203,7 @@ class ExtractCode : CliktCommand() {
 }
 
 class Verify : CliktCommand() {
-    val outputFolder by option("-o", "--output").file().default(File("output"))
+    val outputFolder by option("-o", _OUTPUT).file().default(File("output"))
     val inputFile by argument("SYSTEM")
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val context by findObject<AppContext>()
