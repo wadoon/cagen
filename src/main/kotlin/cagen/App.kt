@@ -6,10 +6,7 @@ import cagen.Util.infoln
 import cagen.code.CCodeUtils
 import cagen.draw.Dot
 import cagen.draw.TikzPrinter
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.findObject
-import com.github.ajalt.clikt.core.findOrSetObject
-import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.core.*
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.file
@@ -55,7 +52,9 @@ class AppContext(verbose: Boolean, var version: String? = null, var variants: Li
     }
 }
 
-class Tool : CliktCommand(allowMultipleSubcommands = true) {
+class Tool : CliktCommand() {
+    override val allowMultipleSubcommands = true
+
     val verbose by option().flag("--no-verbose")
     val version by option("--version")
     val variants by option("--variant").multiple()
@@ -143,10 +142,10 @@ class TikzCommand : CliktCommand() {
     }
 }
 
-class VVSlice : CliktCommand(
-    name = "vvslice", help = """Slices a given system model given by the version and variants information. 
+class VVSlice : CliktCommand(name = "vvslice") {
+    override fun help(context: Context) = """Slices a given system model given by the version and variants information. 
     |Use with an empty version or variants results into a pretty printed and identical system.""".trimMargin()
-) {
+
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val output by option("-o", "--output").default("-")
 
@@ -155,10 +154,11 @@ class VVSlice : CliktCommand(
     override fun run() {
         val model = context!!.load(inputFile)
         val result = PrettyPrinter.asString { pp(model) }
-        if (output == "-")
+        if (output == "-") {
             println(result)
-        else
-            File(output).writeText(result)
+        } else {
+        }
+        File(output).writeText(result)
     }
 }
 
