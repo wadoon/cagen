@@ -55,3 +55,19 @@ testing {
 application {
     mainClass.set("cagen.AppKt")
 }
+
+val javaVersion = 21
+
+kotlin {
+    jvmToolchain(javaVersion)
+    compilerOptions {}
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(javaVersion))
+    }
+}
+tasks.withType(JavaCompile::class) {
+    options.release.set(javaVersion)
+}
