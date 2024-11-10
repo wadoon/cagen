@@ -59,22 +59,21 @@ class Tool : CliktCommand() {
     val version by option("--version")
     val variants by option("--variant").multiple()
 
-    val context by findOrSetObject { AppContext(verbose, version, variants) }
 
     override fun run() {
-        // No actions for top level command.
+        currentContext.obj = AppContext(verbose, version, variants)
     }
 }
 
-private const val _OUTPUT = "--output"
+private const val OUTPUT = "--output"
 
 class DotCommand : CliktCommand() {
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
-    val tempFile by option("-o", _OUTPUT).default(File.createTempFile("cagen", ".dot").toString())
+    val tempFile by option("-o", OUTPUT).default(File.createTempFile("cagen", ".dot").toString())
     val watch by option().flag()
     val topLevelSystem by option("--tl", "--entry").required()
 
-    val context by findObject<AppContext>()
+    val context by requireObject<AppContext>()
 
     override fun run() {
         if (watch) watchMode()
@@ -115,7 +114,7 @@ class DotCommand : CliktCommand() {
     }
 
     private fun getDot(): String {
-        val model = context!!.load(inputFile)
+        val model = context.load(inputFile)
         val dot = Dot.asString {
             printDot(
                 model.findSystemByName(topLevelSystem)
@@ -129,12 +128,12 @@ class DotCommand : CliktCommand() {
 class TikzCommand : CliktCommand() {
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val fragment by option().flag()
-    val output by option("-o", _OUTPUT).default("-")
+    val output by option("-o", OUTPUT).default("-")
 
-    val context by findObject<AppContext>()
+    val context by requireObject<AppContext>()
 
     override fun run() {
-        val (sys, contracts) = context!!.load(inputFile)
+        val (sys, contracts) = context.load(inputFile)
         val s = if (!fragment)
             TikzPrinter.asString { tikz_standalone(sys + contracts) }
         else
@@ -151,12 +150,12 @@ class VVSlice : CliktCommand(name = "vvslice") {
     |Use with an empty version or variants results into a pretty printed and identical system.""".trimMargin()
 
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
-    val output by option("-o", _OUTPUT).default("-")
+    val output by option("-o", OUTPUT).default("-")
 
-    val context by findObject<AppContext>()
+    val context by requireObject<AppContext>()
 
     override fun run() {
-        val model = context!!.load(inputFile)
+        val model = context.load(inputFile)
         val result = PrettyPrinter.asString { pp(model) }
         if (output == "-") {
             println(result)
@@ -171,10 +170,10 @@ class ConstructCA : CliktCommand(name = "construct") {
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val systemName by argument()
 
-    val context by findObject<AppContext>()
+    val context by requireObject<AppContext>()
 
     override fun run() {
-        val (sys, _) = context!!.load(inputFile)
+        val (sys, _) = context.load(inputFile)
         val system = sys.find { it.name == systemName }
             ?: error("The provided systemName can not be find in the given file $inputFile")
         val uc = ConstructCAFacade.construct(system)
@@ -184,12 +183,12 @@ class ConstructCA : CliktCommand(name = "construct") {
 
 
 class ExtractCode : CliktCommand() {
-    val outputFolder by option("-o", _OUTPUT).file().default(File("output"))
+    val outputFolder by option("-o", OUTPUT).file().default(File("output"))
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
-    val context by findObject<AppContext>()
+    val context by requireObject<AppContext>()
 
     override fun run() {
-        val (sys, contracts) = context!!.load(inputFile)
+        val (sys, contracts) = context.load(inputFile)
         infoln("Write to $outputFolder")
         outputFolder.mkdirs()
         sys.forEach {
@@ -203,13 +202,13 @@ class ExtractCode : CliktCommand() {
 }
 
 class Verify : CliktCommand() {
-    val outputFolder by option("-o", _OUTPUT).file().default(File("output"))
+    val outputFolder by option("-o", OUTPUT).file().default(File("output"))
     val inputFile by argument("SYSTEM")
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
-    val context by findObject<AppContext>()
+    val context by requireObject<AppContext>()
 
     override fun run() {
-        val model = context!!.load(inputFile)
+        val model = context.load(inputFile)
         val pos = createProofObligations(model)
         infoln("Proof Obligation found:")
         for (po in pos) {
