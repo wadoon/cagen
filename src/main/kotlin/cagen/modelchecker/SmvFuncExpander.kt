@@ -12,11 +12,22 @@ object SmvFuncExpander {
             return when (func.name) {
                 "abs" -> {
                     val arg = func.arguments.first()
-                    ite(arg lt SLiteral.integer(0), arg.negate(), arg)
+                    val lit = (arg.dataType?: SMVTypes.signed(32)).literal(0)
+                    ite(arg lt lit, arg.negate(), arg)
                 }
 
                 else -> super.visit(func)
             }
         }
+    }
+}
+
+private fun SMVType.literal(i: Int): SLiteral = when (this) {
+    SMVTypes.BOOLEAN -> if (i == 0) SLiteral.FALSE else SLiteral.TRUE
+    SMVTypes.FLOAT -> SFloatLiteral(i.toBigDecimal())
+    SMVTypes.INT -> SLiteral.integer(i.toBigInteger())
+    is SMVWordType -> SWordLiteral(i.toBigInteger(), this)
+    else -> {
+        error("unreachable")
     }
 }

@@ -17,15 +17,11 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
         val pright = precedence(be.right)
         val pown = precedence(be)
 
-        if (pleft > pown) stream.print('(')
+        stream.print('(')
         be.left.accept(this)
-        if (pleft > pown) stream.print(')')
-
         stream.print(" " + be.operator.symbol() + " ")
-
-        if (pright > pown) stream.print('(')
         be.right.accept(this)
-        if (pright > pown) stream.print(')')
+        stream.print(')')
     }
 
     private fun precedence(expr: SMVExpr): Int {

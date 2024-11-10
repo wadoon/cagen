@@ -1058,7 +1058,7 @@ open class ExpressionReplacerRecur(private val assignments: Map<out SMVExpr, SMV
  * @version 1 (09.04.18)
  */
 
-interface SMVType {
+sealed interface SMVType {
     fun format(value: Any): String
     fun read(str: String): Any
     fun valueOf(str: String): SLiteral

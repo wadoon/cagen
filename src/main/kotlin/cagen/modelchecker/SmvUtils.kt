@@ -3,6 +3,7 @@ package cagen.modelchecker
 import cagen.*
 import cagen.System
 import cagen.expr.SMVExpr
+import cagen.modelchecker.SmvFuncExpander.expand
 
 val Type.asSmvType: String
     get() = when (this) {
@@ -273,7 +274,7 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
 }
 
 fun SMVExpr.toSMVExpr() : String {
-    return cagen.expr.SMVPrinter.toString(this)
+    return cagen.expr.SMVPrinter.toString(this.expand())
 }
 
 
