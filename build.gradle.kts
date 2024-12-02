@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.0.21"
+    id("org.jetbrains.kotlin.jvm") version "2.1.0"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     application
     antlr
@@ -14,7 +14,7 @@ repositories {
 dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("com.github.ajalt.clikt:clikt:5.0.1")
+    implementation("com.github.ajalt.clikt:clikt:5.0.2")
     implementation("org.yaml:snakeyaml:2.3")
 
     // graph drawing
