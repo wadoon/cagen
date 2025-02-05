@@ -25,6 +25,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.11.4")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.4")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.11.4")
+    testImplementation("org.assertj:assertj-core:3.27.3")
 
     implementation("org.antlr:antlr4-runtime:4.13.2")
     antlr("org.antlr:antlr4:4.13.2")
@@ -47,7 +48,7 @@ tasks.getByName("compileTestKotlin").dependsOn("generateTestGrammarSource")
 testing {
     suites {
         val test by getting(JvmTestSuite::class) {
-            useJUnitJupiter("5.10.1")
+            useJUnitJupiter("5.11.4")
         }
     }
 }

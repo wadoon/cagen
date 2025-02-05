@@ -4,7 +4,7 @@ import cagen.code.CCodeUtilsSimplified.toCExpr
 import cagen.modelchecker.toSMVExpr
 import cagen.tutil.YamlSourceFile
 import org.antlr.v4.runtime.CharStreams
-import org.junit.jupiter.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -25,8 +25,8 @@ class GrammarTests {
         val actualC = expr.toCExpr()
         val actualSmv = expr.toSMVExpr()
 
-        Assertions.assertEquals(expectedC?.trim(), actualC)
-        Assertions.assertEquals(expectedSMV?.trim(), actualSmv)
+        assertThat(actualC).isEqualToIgnoringWhitespace(expectedC)
+        assertThat(actualSmv).isEqualToIgnoringWhitespace(expectedSMV)
     }
 
     @ParameterizedTest
@@ -37,7 +37,7 @@ class GrammarTests {
         val pp = PrettyPrinter.asString { pp(m1) }
         println(pp)
         val m2 = ParserFacade.loadFile(CharStreams.fromString(pp))
-        Assertions.assertEquals(m1, m2)
+        assertThat(m1).isEqualTo(m2)
     }
 
     @ParameterizedTest
