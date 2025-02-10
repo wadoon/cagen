@@ -14,7 +14,7 @@ repositories {
 dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("com.github.ajalt.clikt:clikt:5.0.2")
+    implementation("com.github.ajalt.clikt:clikt:5.0.3")
     implementation("org.yaml:snakeyaml:2.3")
 
     // graph drawing
