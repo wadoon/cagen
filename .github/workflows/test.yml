@@ -35,7 +35,7 @@ jobs:
           arguments: --continue test
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@v4.6.2
         if: success() || failure()
         with:
           name: test-results-${{matrix.os}}-${{matrix.java}}
