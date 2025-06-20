@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -20,9 +20,8 @@ package cagen.modelchecker
 
 import cagen.ParserFacade
 import cagen.modelchecker.SmvFuncExpander.expand
-import org.junit.jupiter.api.Test
-
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 /**
  *
@@ -33,7 +32,7 @@ class SmvFuncExpanderTest {
     @Test
     fun expand() {
         val expr = ParserFacade.parseExpr("1+abs(-x)")
-        val expected  = ParserFacade.parseExpr("1+(case -x < 0sd32_0 : --x; TRUE: -x; esac)")
+        val expected = ParserFacade.parseExpr("1+(case -x < 0sd32_0 : --x; TRUE: -x; esac)")
         val expanded = expr.expand()
         assertEquals(expected.toSMVExpr(), expanded.toSMVExpr())
     }

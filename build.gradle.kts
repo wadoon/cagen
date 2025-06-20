@@ -39,7 +39,7 @@ spotless {
             |/* *****************************************************************
             | * This file belongs to cagen (https://github.com/wadoon/cagen).
             | * SPDX-License-Header: GPL-3.0-or-later
-            | * 
+            | *
             | * This program isType free software: you can redistribute it and/or modify
             | * it under the terms of the GNU General Public License as
             | * published by the Free Software Foundation, either version 3 of the
@@ -57,11 +57,9 @@ spotless {
             |
             """.trimMargin(),
         )
-        // or licenseHeaderFile
-        // ktfmt("0.55").kotlinlangStyle()
         var editorConfig = File(rootDir, ".editorconfig")
-        println(editorConfig)
-        println(editorConfig.exists())
+        //println(editorConfig)
+        //println(editorConfig.exists())
         ktlint("1.6.0").setEditorConfigPath(editorConfig.absolutePath)
     }
 }

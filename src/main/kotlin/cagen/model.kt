@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -161,7 +161,9 @@ private operator fun Iterable<CATransition>.times(transitions: Iterable<CATransi
             )
 
             CATransition(
-                "${t.name}_${s.name}", "${t.from}_${s.from}", "${t.to}_${s.to}",
+                "${t.name}_${s.name}",
+                "${t.from}_${s.from}",
+                "${t.to}_${s.to}",
                 t.vvGuard and s.vvGuard,
                 contract
             )
@@ -178,13 +180,7 @@ data class PrePost(
     }
 }
 
-data class CATransition(
-    val name: String,
-    val from: String,
-    val to: String,
-    val vvGuard: VVGuard,
-    val contract: PrePost
-)
+data class CATransition(val name: String, val from: String, val to: String, val vvGuard: VVGuard, val contract: PrePost)
 
 private fun toporderSystem(
     remaining: MutableList<Variable>,
@@ -207,10 +203,7 @@ private fun toporderSystem(
     return results
 }
 
-private fun toporder(
-    remaining: MutableList<Variable>,
-    ports: MutableList<Pair<IOPort, IOPort>>
-): String {
+private fun toporder(remaining: MutableList<Variable>, ports: MutableList<Pair<IOPort, IOPort>>): String {
     if (remaining.isEmpty()) return ""
 
     val remPorts = ports.filter { it.second.variable in remaining && it.first.variable in remaining }
@@ -224,12 +217,11 @@ private fun toporder(
         error("We have a problem building the topological order. Check for cycles!")
     }
 
-    fun variable(v: IOPort): String =
-        if (v.variable.name == "self") {
-            "state->${v.portName}"
-        } else {
-            "state->${v.variable.name}.${v.portName}"
-        }
+    fun variable(v: IOPort): String = if (v.variable.name == "self") {
+        "state->${v.portName}"
+    } else {
+        "state->${v.variable.name}.${v.portName}"
+    }
 
     val s = buildString {
         for (variable in front) {
@@ -248,10 +240,7 @@ private fun toporder(
     return s + toporder(remaining, ports)
 }
 
-private fun topordersys(
-    remaining: MutableList<Variable>,
-    ports: MutableList<Pair<IOPort, IOPort>>
-): List<Variable> {
+private fun topordersys(remaining: MutableList<Variable>, ports: MutableList<Pair<IOPort, IOPort>>): List<Variable> {
     if (remaining.isEmpty()) return listOf()
 
     val remPorts = ports.filter { it.second.variable in remaining && it.first.variable in remaining }
@@ -265,12 +254,11 @@ private fun topordersys(
         error("We have a problem building the topological order. Check for cycles!")
     }
 
-    fun variable(v: IOPort): String =
-        if (v.variable.name == "self") {
-            "state->${v.portName}"
-        } else {
-            "state->${v.variable.name}.${v.portName}"
-        }
+    fun variable(v: IOPort): String = if (v.variable.name == "self") {
+        "state->${v.portName}"
+    } else {
+        "state->${v.variable.name}.${v.portName}"
+    }
 
     for (variable in front) {
         val incoming = ports.filter { it.second.variable == variable }
@@ -336,11 +324,10 @@ data class Variant(val family: VariantFamily, val name: String) : VV() {
     val value
         get() = family.index(this)
 
-    override fun compareTo(other: VV): Int? =
-        when (other) {
-            is Variant -> if (family == other.family) value - other.value else null
-            is Version -> null
-        }
+    override fun compareTo(other: VV): Int? = when (other) {
+        is Variant -> if (family == other.family) value - other.value else null
+        is Version -> null
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -368,11 +355,10 @@ data class Version(val number: List<Int>) : VV() {
         return number.size - other.number.size
     }
 
-    override fun compareTo(other: VV): Int? =
-        when (other) {
-            is Variant -> null
-            is Version -> this.compareTo(other)
-        }
+    override fun compareTo(other: VV): Int? = when (other) {
+        is Variant -> null
+        is Version -> this.compareTo(other)
+    }
 }
 
 data class VariantLattice(val families: MutableList<VariantFamily> = mutableListOf()) {

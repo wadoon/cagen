@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -73,7 +73,9 @@ object ParserFacade {
             e: RecognitionException?
         ) {
             val filename = File((offendingSymbol as Token).tokenSource.sourceName).absolutePath
-            throw RuntimeException("Parsing error: in file:/$filename $line:$charPositionInLine at $offendingSymbol, $msg")
+            throw RuntimeException(
+                "Parsing error: in file:/$filename $line:$charPositionInLine at $offendingSymbol, $msg"
+            )
         }
 
         override fun reportAmbiguity(
@@ -122,7 +124,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
                 } else {
                     SystemType(
                         model.systems.find { it.name == typename }
-                    ?: error("Could not find a system with $typename ${varctx.position}")
+                            ?: error("Could not find a system with $typename ${varctx.position}")
                     )
                 }
             val init = varctx.init?.asExpr()
@@ -161,12 +163,11 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         }
     }
 
-    fun versionOrVariant(vv: VvContext) =
-        if (vv.version() != null) {
-            version(vv.version())
-        } else {
-            model.findVariant(vv.text)
-        }
+    fun versionOrVariant(vv: VvContext) = if (vv.version() != null) {
+        version(vv.version())
+    } else {
+        model.findVariant(vv.text)
+    }
     // end region
 
     override fun visitSystem(ctx: SystemContext) {
@@ -196,43 +197,37 @@ class Translator : SystemDefBaseVisitor<Unit>() {
         subst: List<SubstContext>,
         signature: Signature,
         self: Variable
-    ): MutableList<Pair<String, IOPort>> =
-        if (subst.isNotEmpty()) {
-            subst.map {
-                val local = it.local.text
-                val outer = port(it.from, signature, self)
-                local to outer
-            }.toMutableList()
-        } else {
-            (signature.inputs + signature.outputs).map {
-                it.name to IOPort(self, it.name)
-            }.toMutableList()
-        }
+    ): MutableList<Pair<String, IOPort>> = if (subst.isNotEmpty()) {
+        subst.map {
+            val local = it.local.text
+            val outer = port(it.from, signature, self)
+            local to outer
+        }.toMutableList()
+    } else {
+        (signature.inputs + signature.outputs).map {
+            it.name to IOPort(self, it.name)
+        }.toMutableList()
+    }
 
-    private fun parseConnections(
-        ctx: List<ConnectionContext>,
-        signature: Signature,
-        self: Variable
-    ) = ctx.flatMap { cc ->
-        val from = port(cc.from, signature, self)
-        cc.to.map { from to port(it, signature, self) }
-    }.toMutableList()
+    private fun parseConnections(ctx: List<ConnectionContext>, signature: Signature, self: Variable) =
+        ctx.flatMap { cc ->
+            val from = port(cc.from, signature, self)
+            cc.to.map { from to port(it, signature, self) }
+        }.toMutableList()
 
-    private fun port(ioportContext: IoportContext, signature: Signature, self: Variable) =
-        IOPort(
-            ioportContext.inst?.let { inst ->
-                if (inst.text == "self") {
-                    self
-                } else {
-                    (signature.all).find { it.name == inst.text }
+    private fun port(ioportContext: IoportContext, signature: Signature, self: Variable) = IOPort(
+        ioportContext.inst?.let { inst ->
+            if (inst.text == "self") {
+                self
+            } else {
+                (signature.all).find { it.name == inst.text }
                     ?: error("Could not find '${inst.text}' in signature $signature")
-                }
-            } ?: self,
-            ioportContext.port.text
-        )
+            }
+        } ?: self,
+        ioportContext.port.text
+    )
 
-    private fun cleanCode(text: String?): String? =
-        text?.substring(2, text.length - 2)
+    private fun cleanCode(text: String?): String? = text?.substring(2, text.length - 2)
 
     private fun parseIo(io: List<IoContext>): Signature {
         val sig = Signature()
@@ -250,7 +245,7 @@ class Translator : SystemDefBaseVisitor<Unit>() {
                     } else {
                         SystemType(
                             model.systems.find { it.name == typename }
-                        ?: error("Could not find a system with $typename ${varctx.position}")
+                                ?: error("Could not find a system with $typename ${varctx.position}")
                         )
                     }
                 val init = varctx.init?.asExpr()
@@ -276,8 +271,8 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             seq.use_contract().map { uc ->
                 val contract: Contract = (
                     model.contracts.find { c -> c.name == uc.ident().text }
-                    ?: error("Could not find contract ${uc.ident().text}")
-                )
+                        ?: error("Could not find contract ${uc.ident().text}")
+                    )
                 UseContract(contract, parseSubst(uc.subst(), signature, self))
             }
         }
@@ -302,9 +297,10 @@ class Translator : SystemDefBaseVisitor<Unit>() {
                     localcontracts[it.contr.text]
                 } else {
                     PrePost(
-                    it.pre.asExpr(), it.post.asExpr(),
-                    "contract_trans_${it.from.text}_${it.to.text}_${PrePost.counter.getAndIncrement()}"
-                )
+                        it.pre.asExpr(),
+                        it.post.asExpr(),
+                        "contract_trans_${it.from.text}_${it.to.text}_${PrePost.counter.getAndIncrement()}"
+                    )
                 }
             contract ?: error("Could not find contract ${it.contr.text}")
             CATransition("t_${it.start.line}", it.from.text, it.to.text, vvGuard, contract)
@@ -401,19 +397,16 @@ class Translator : SystemDefBaseVisitor<Unit>() {
             return SFunction(ctx.name.text, exprs)
         }
 
-        private fun getSMVExprs(ctx: FunctionExprContext): List<SMVExpr> =
-            ctx.expr().map { it.accept(this) }
+        private fun getSMVExprs(ctx: FunctionExprContext): List<SMVExpr> = ctx.expr().map { it.accept(this) }
 
-        override fun visitCasesExprAtom(ctx: CasesExprAtomContext): SMVExpr =
-            super.visitCasesExprAtom(ctx)
+        override fun visitCasesExprAtom(ctx: CasesExprAtomContext): SMVExpr = super.visitCasesExprAtom(ctx)
 
-        override fun visitFieldaccess(ctx: FieldaccessContext): SMVExpr =
-            super.visitFieldaccess(ctx)
+        override fun visitFieldaccess(ctx: FieldaccessContext): SMVExpr = super.visitFieldaccess(ctx)
 
-        override fun visitArrayaccess(ctx: ArrayaccessContext): SMVExpr =
-            super.visitArrayaccess(ctx)
+        override fun visitArrayaccess(ctx: ArrayaccessContext): SMVExpr = super.visitArrayaccess(ctx)
 
-        override fun visitIntegerLiteral(ctx: IntegerLiteralContext): SMVExpr = SIntegerLiteral(BigInteger(ctx.value.text))
+        override fun visitIntegerLiteral(ctx: IntegerLiteralContext): SMVExpr =
+            SIntegerLiteral(BigInteger(ctx.value.text))
 
         override fun visitFloatLiteral(ctx: FloatLiteralContext): SMVExpr = SFloatLiteral(BigDecimal(ctx.value.text))
 

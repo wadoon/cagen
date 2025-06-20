@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -19,7 +19,6 @@
 package cagen.modelchecker
 
 import cagen.*
-import cagen.System
 import cagen.expr.SMVExpr
 import cagen.modelchecker.SmvFuncExpander.expand
 
@@ -68,8 +67,8 @@ object SmvUtils {
     ${
             contract.contracts.joinToString("\n") {
                 "pre_${it.name} := ${it.pre.toSMVExpr()};\n" +
-                        "post_${it.name} := ${it.post.toSMVExpr()};\n" +
-                        "${it.name} := pre_${it.name} & post_${it.name};\n"
+                    "post_${it.name} := ${it.post.toSMVExpr()};\n" +
+                    "${it.name} := pre_${it.name} & post_${it.name};\n"
             }
         }
     ${contract.transitions.joinToString("\n") { "${it.name} := ${it.from} & ${it.contract.name};" }}
@@ -98,25 +97,24 @@ object SmvUtils {
 
     init(_assume_) := FALSE;
     next(_assume_) := _assume_ | (! STATE_IN_NEXT  & ! VALID_PRE_COND & !_error_); -- and the reason is all pre-condition will be violated
-    """.trimIndent()
+        """.trimIndent()
         return content
     }
 
-    private fun handleHistory(contract: Contract): String =
-        contract.history.joinToString("\n") { history ->
-            val (name, depth) = history
-            val type = contract.signature.get(name)!!.type.name
-            val defines = (0..depth).joinToString("\n") {
-                "h_${name}_$it := h_$name._$it;"
-            }
-            """
+    private fun handleHistory(contract: Contract): String = contract.history.joinToString("\n") { history ->
+        val (name, depth) = history
+        val type = contract.signature.get(name)!!.type.name
+        val defines = (0..depth).joinToString("\n") {
+            "h_${name}_$it := h_$name._$it;"
+        }
+        """
             VAR h_$name : History_${type}_$depth($name);
             DEFINE
             $defines
-            """.trimIndent()
-        }
+        """.trimIndent()
+    }
 
-    fun inv_module(name: String, signature: Signature, pre: String, post: String, model: Model) = """
+    fun invModule(name: String, signature: Signature, pre: String, post: String, model: Model) = """
     ${moduleHead(name, signature, model.globalDefines)}
     DEFINE
         ASSUMPTION := $pre;
@@ -138,7 +136,7 @@ object SmvUtils {
         ----
     """.trimIndent()
 
-    fun ltl_module(name: String, signature: Signature, pre: String, post: String, model: Model) = """
+    fun ltlModule(name: String, signature: Signature, pre: String, post: String, model: Model) = """
         ${moduleHead(name, signature, model.globalDefines)}
         DEFINE
             ASSUMPTION := $pre;
@@ -185,7 +183,7 @@ VAR
  
 INVARSPEC parent.ASSUMPTION -> sub.ASSUMPTION;
 INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
-""".trimIndent()
+        """.trimIndent()
     }
 
     fun toSmv(model: Model, system: System, contract: UseContract): String = with(system) {
@@ -239,7 +237,7 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
                 val params = (
                     useContract.contract.signature.inputs +
                         useContract.contract.signature.outputs
-                ).joinToString {
+                    ).joinToString {
                     applySubst(useContract.variableMap, it, inst.name)
                 }
 
@@ -270,7 +268,11 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
                 //        -> G ttc._assume_;
                 append("\nLTLSPEC G (connections & contract._assume_ & $upstream) -> G($downstream._assume_)")
             }
-            append("\nLTLSPEC G (connections & ${system.signature.instances.joinToString(" & ") { "!${it.name}._error_ & !${it.name}._assume_" }}) -> G(!contract._error_)")
+
+            val formulae = system.signature.instances.joinToString(" & ") {
+                "!${it.name}._error_ & !${it.name}._assume_"
+            }
+            append("\nLTLSPEC G (connections & $formulae) -> G(!contract._error_)")
 
             contracts.forEach {
                 append("\n")

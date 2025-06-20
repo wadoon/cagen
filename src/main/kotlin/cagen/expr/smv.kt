@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -45,28 +45,22 @@ sealed class SMVAst {
     abstract fun clone(): SMVAst
 }
 
-data class SAssignment(
-    var target: SVariable,
-    var expr: SMVExpr
-) : SMVAst() {
+data class SAssignment(var target: SVariable, var expr: SMVExpr) : SMVAst() {
     override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
     override fun clone() = copy()
 }
 
-data class SBinaryExpression(
-    var left: SMVExpr,
-    var operator: SBinaryOperator,
-    var right: SMVExpr
-) : SMVExpr() {
+data class SBinaryExpression(var left: SMVExpr, var operator: SBinaryOperator, var right: SMVExpr) : SMVExpr() {
 
     override val dataType: SMVType?
         get() = SMVTypes.infer(operator, left.dataType, right.dataType)
 
     override fun prefix(prefix: String): SBinaryExpression = SBinaryExpression(
-            left.prefix(prefix),
-            operator, right.prefix(prefix)
-        )
+        left.prefix(prefix),
+        operator,
+        right.prefix(prefix)
+    )
 
     override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
@@ -141,10 +135,7 @@ data class SCaseExpression(var cases: MutableList<Case> = arrayListOf()) : SMVEx
         return c
     }
 
-    data class Case(
-        var condition: SMVExpr,
-        var then: SMVExpr
-    ) {
+    data class Case(var condition: SMVExpr, var then: SMVExpr) {
         fun clone(): Case = Case(condition.clone(), then.clone())
     }
 
@@ -155,17 +146,14 @@ data class SCaseExpression(var cases: MutableList<Case> = arrayListOf()) : SMVEx
  * @author Alexander Weigl
  * @version 1 (12.12.16)
  */
-data class SFunction(
-    val name: String,
-    var arguments: List<SMVExpr>
-) : SMVExpr() {
+data class SFunction(val name: String, var arguments: List<SMVExpr>) : SMVExpr() {
     private var typeSolver: FunctionTypeSolver? = null
 
     override val dataType: SMVType?
         get() = typeSolver?.invoke(this)
 
     constructor(funcName: String, vararg expr: SMVExpr) :
-            this(funcName, listOf(*expr))
+        this(funcName, listOf(*expr))
 
     override fun clone() = SFunction(name, arguments.map { it.clone() })
 
@@ -173,7 +161,7 @@ data class SFunction(
 
     override fun prefix(prefix: String): SFunction = SFunction(
         name,
-            arguments.map { a -> a.prefix(prefix) }
+        arguments.map { a -> a.prefix(prefix) }
     )
 }
 
@@ -236,10 +224,8 @@ data class SFloatLiteral(override var value: BigDecimal) : SLiteral(value, SMVTy
     override fun clone() = copy()
 }
 
-data class SWordLiteral(
-    override var value: BigInteger,
-    override var dataType: SMVWordType
-) : SLiteral(value, dataType) {
+data class SWordLiteral(override var value: BigInteger, override var dataType: SMVWordType) :
+    SLiteral(value, dataType) {
     override fun prefix(prefix: String): SMVExpr = SWordLiteral(value, dataType)
     override fun clone() = copy()
 }
@@ -249,19 +235,14 @@ data class SBooleanLiteral(override var value: Boolean) : SLiteral(value, SMVTyp
     override fun clone() = copy()
 }
 
-data class SEnumLiteral(
-    override var value: String,
-    override var dataType: EnumType = SMVTypes.GENERIC_ENUM
-) : SLiteral(value, dataType) {
+data class SEnumLiteral(override var value: String, override var dataType: EnumType = SMVTypes.GENERIC_ENUM) :
+    SLiteral(value, dataType) {
     override fun prefix(prefix: String): SMVExpr = SEnumLiteral(value)
     override fun clone() = copy()
 }
 
 // Use with caution!
-data class SGenericLiteral(
-    override var value: Any,
-    override var dataType: SMVType
-) : SLiteral(value, dataType) {
+data class SGenericLiteral(override var value: Any, override var dataType: SMVType) : SLiteral(value, dataType) {
     init {
         require(dataType.allowedValue(value)) {
             "Value $value is not allowed for $dataType"
@@ -327,8 +308,7 @@ abstract class SMVExpr : SMVAst() {
     fun inModule(module: String) = prefix("$module.")
     abstract fun prefix(prefix: String): SMVExpr
 
-    fun wordConcat(b: SMVExpr): SMVExpr =
-        op(SBinaryOperator.WORD_CONCAT, b)
+    fun wordConcat(b: SMVExpr): SMVExpr = op(SBinaryOperator.WORD_CONCAT, b)
 
     // fun bitAccess(from: Long, to: Long) = SMVFacade.bitAccess(this, from, to)
 
@@ -336,8 +316,7 @@ abstract class SMVExpr : SMVAst() {
         return bitAccess(range.start.toLong(), range.last.toLong())
     }*/
 
-    fun inNext(): SFunction =
-        SFunction("next", this)
+    fun inNext(): SFunction = SFunction("next", this)
     //endregion
 
     abstract override fun clone(): SMVExpr
@@ -436,14 +415,11 @@ data class SVariable(var name: String) :
             return v
         }
 
-        fun with(width: Int, signed: Boolean): SVariable =
-            with(SMVWordType(signed, width))
+        fun with(width: Int, signed: Boolean): SVariable = with(SMVWordType(signed, width))
 
-        fun withSigned(width: Int): SVariable =
-            with(width, true)
+        fun withSigned(width: Int): SVariable = with(width, true)
 
-        fun withUnsigned(width: Int): SVariable =
-            with(width, false)
+        fun withUnsigned(width: Int): SVariable = with(width, false)
 
         fun asBool(): SVariable = with(SMVTypes.BOOLEAN)
     }
@@ -594,21 +570,18 @@ enum class SBinaryOperator(private val symbol: String, private val precedence: I
  * @author Alexander Weigl
  * @version 1 (11.06.17)
  */
-data class SQuantified(
-    var operator: STemporalOperator,
-    var quantified: MutableList<SMVExpr> = ArrayList(2)
-) : SMVExpr() {
+data class SQuantified(var operator: STemporalOperator, var quantified: MutableList<SMVExpr> = ArrayList(2)) :
+    SMVExpr() {
 
     override val dataType: SMVTypes.BOOLEAN
         get() = SMVTypes.BOOLEAN
 
     constructor(operator: STemporalOperator, vararg expr: SMVExpr) : this(operator, mutableListOf<SMVExpr>(*expr))
 
-    override fun prefix(prefix: String): SQuantified =
-        SQuantified(
-            operator,
-            ArrayList(quantified.map { a -> a.prefix(prefix) })
-        )
+    override fun prefix(prefix: String): SQuantified = SQuantified(
+        operator,
+        ArrayList(quantified.map { a -> a.prefix(prefix) })
+    )
 
     override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
@@ -622,12 +595,7 @@ data class SQuantified(
  * @author Alexander Weigl
  * @version 1 (11.06.17)
  */
-enum class STemporalOperator(
-    val language: TemporalLanguage,
-    val arity: Int,
-    val symbol: String,
-    val desc: String
-) {
+enum class STemporalOperator(val language: TemporalLanguage, val arity: Int, val symbol: String, val desc: String) {
     X(TemporalLanguage.LTL, 1, "X", "NEXT"),
     G(TemporalLanguage.LTL, 1, "G", "GLOBALLY"),
     F(TemporalLanguage.LTL, 1, "F", "FINALLY"),
@@ -891,11 +859,10 @@ abstract class SMVAstMutableVisitor : SMVAstVisitor<SMVAst> {
         return quantified
     }
 
-    private fun <E : SMVAst> List<E>.visitAll(): MutableList<E> =
-        map {
-            @Suppress("UNCHECKED_CAST")
-            it.accept(this@SMVAstMutableVisitor) as E
-        }.toMutableList()
+    private fun <E : SMVAst> List<E>.visitAll(): MutableList<E> = map {
+        @Suppress("UNCHECKED_CAST")
+        it.accept(this@SMVAstMutableVisitor) as E
+    }.toMutableList()
 }
 
 class VariableReplacer(val map: Map<out SMVExpr, SMVExpr>) : SMVAstMutableVisitor() {
@@ -1023,10 +990,7 @@ sealed interface SMVType {
     fun allowedValue(obj: Any): Boolean
 }
 
-data class SMVWordType(
-    val signed: Boolean,
-    val width: Int
-) : SMVType {
+data class SMVWordType(val signed: Boolean, val width: Int) : SMVType {
 
     override fun valueOf(str: String) = SWordLiteral(read(str), this)
 
@@ -1044,31 +1008,31 @@ data class SMVWordType(
     }
 
     override fun repr(): String = String.format(
-            "%s word[%d]",
-            if (signed) {
-                "signed"
-            } else {
-                "unsigned"
-            },
-                width
-        )
+        "%s word[%d]",
+        if (signed) {
+            "signed"
+        } else {
+            "unsigned"
+        },
+        width
+    )
 
     override fun allowedValue(obj: Any): Boolean = obj is BigInteger
 
     override fun format(value: Any): String = when (value) {
-            is BigInteger ->
-                String.format(
-                    "%s0%sd%d_%s",
-                    if (value.signum() < 0) "-" else "",
-                    if (signed) "s" else "u",
-                    width,
-                    value.abs().toString()
-                )
+        is BigInteger ->
+            String.format(
+                "%s0%sd%d_%s",
+                if (value.signum() < 0) "-" else "",
+                if (signed) "s" else "u",
+                width,
+                value.abs().toString()
+            )
 
-            is Long -> format(BigInteger.valueOf(value))
-            is Int -> format(BigInteger.valueOf(value.toLong()))
-            else -> error("not implemented for ${value.javaClass}")
-        }
+        is Long -> format(BigInteger.valueOf(value))
+        is Int -> format(BigInteger.valueOf(value.toLong()))
+        else -> error("not implemented for ${value.javaClass}")
+    }
 }
 
 object SMVTypes {
@@ -1103,21 +1067,21 @@ object SMVTypes {
 
     @JvmStatic
     fun infer(op: SBinaryOperator, a: SMVType?, b: SMVType?): SMVType? = when (op) {
-            SBinaryOperator.AND -> BOOLEAN
-            SBinaryOperator.OR -> BOOLEAN
-            SBinaryOperator.LESS_THAN -> BOOLEAN
-            SBinaryOperator.LESS_EQUAL -> BOOLEAN
-            SBinaryOperator.GREATER_THAN -> BOOLEAN
-            SBinaryOperator.GREATER_EQUAL -> BOOLEAN
-            SBinaryOperator.XOR -> BOOLEAN
-            SBinaryOperator.XNOR -> BOOLEAN
-            SBinaryOperator.EQUAL -> BOOLEAN
-            SBinaryOperator.IMPL -> BOOLEAN
-            SBinaryOperator.EQUIV -> BOOLEAN
-            SBinaryOperator.NOT_EQUAL -> BOOLEAN
-            SBinaryOperator.WORD_CONCAT -> TODO()
-            else -> infer(a, b)
-        }
+        SBinaryOperator.AND -> BOOLEAN
+        SBinaryOperator.OR -> BOOLEAN
+        SBinaryOperator.LESS_THAN -> BOOLEAN
+        SBinaryOperator.LESS_EQUAL -> BOOLEAN
+        SBinaryOperator.GREATER_THAN -> BOOLEAN
+        SBinaryOperator.GREATER_EQUAL -> BOOLEAN
+        SBinaryOperator.XOR -> BOOLEAN
+        SBinaryOperator.XNOR -> BOOLEAN
+        SBinaryOperator.EQUAL -> BOOLEAN
+        SBinaryOperator.IMPL -> BOOLEAN
+        SBinaryOperator.EQUIV -> BOOLEAN
+        SBinaryOperator.NOT_EQUAL -> BOOLEAN
+        SBinaryOperator.WORD_CONCAT -> TODO()
+        else -> infer(a, b)
+    }
 
     @JvmStatic
     fun infer(a: SMVType?, b: SMVType?): SMVType? = if (a == b) a else null
@@ -1150,10 +1114,7 @@ data class EnumType(var values: List<String>) : SMVType {
     }
 }
 
-data class ModuleType(
-    val moduleName: String,
-    val parameters: List<SMVExpr>
-) : SMVType {
+data class ModuleType(val moduleName: String, val parameters: List<SMVExpr>) : SMVType {
     override fun format(value: Any): String = error("not implemented")
     override fun read(str: String): Any = error("not implemented")
     override fun valueOf(str: String): SLiteral = error("not implemented")
@@ -1162,7 +1123,7 @@ data class ModuleType(
     override fun allowedValue(obj: Any): Boolean = obj is String
 
     constructor(name: String, vararg variables: SVariable) :
-            this(name, mutableListOf<SVariable>(*variables))
+        this(name, mutableListOf<SVariable>(*variables))
 
     override fun toString(): String {
         val params = if (parameters.isNotEmpty()) {
@@ -1201,8 +1162,7 @@ object FunctionTypeSolvers {
     fun specificType(dt: SMVType): FunctionTypeSolver = { dt }
 }
 
-fun Iterable<SMVExpr>.joinToExpr(operator: SBinaryOperator): SMVExpr =
-    reduce { a, b -> a.op(operator, b) }
+fun Iterable<SMVExpr>.joinToExpr(operator: SBinaryOperator): SMVExpr = reduce { a, b -> a.op(operator, b) }
 
 fun Iterable<SMVExpr>.disjunction(): SMVExpr = joinToExpr(SBinaryOperator.OR)
 fun Iterable<SMVExpr>.conjunction(): SMVExpr = joinToExpr(SBinaryOperator.AND)
@@ -1214,8 +1174,6 @@ fun Collection<SMVExpr>.joinToExpr(operator: SBinaryOperator = SBinaryOperator.A
         default
     }
 
-fun Collection<SMVExpr>.disjunction(default: SMVExpr): SMVExpr =
-    joinToExpr(SBinaryOperator.OR, default)
+fun Collection<SMVExpr>.disjunction(default: SMVExpr): SMVExpr = joinToExpr(SBinaryOperator.OR, default)
 
-fun Collection<SMVExpr>.conjunction(default: SMVExpr): SMVExpr =
-    joinToExpr(SBinaryOperator.AND, default)
+fun Collection<SMVExpr>.conjunction(default: SMVExpr): SMVExpr = joinToExpr(SBinaryOperator.AND, default)

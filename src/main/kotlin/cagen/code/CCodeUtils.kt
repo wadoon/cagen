@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -174,8 +174,9 @@ object CCodeUtils {
         val history =
             contract.history.joinToString("\n") { (n, d) ->
                 val t = contract.signature.get(n)?.type?.toC()
-                (d downTo 1).joinToString("\n") { "state->h_${n}_$it = state->h_${n}_${it - 1}; $t h_${n}_$it =state->h_${n}_$it;" } +
-                        "state->h_${n}_0 = state->$n;" + "$t h_${n}_0 = state->$n;"
+                (d downTo 1).joinToString("\n") {
+                    "state->h_${n}_$it = state->h_${n}_${it - 1}; $t h_${n}_$it =state->h_${n}_$it;"
+                } + "state->h_${n}_0 = state->$n;" + "$t h_${n}_0 = state->$n;"
             }
 
         val content = """
@@ -198,10 +199,10 @@ object CCodeUtils {
                 ${
             contract.transitions.joinToString("\n") {
                 "bool pre_${it.name} = ${it.contract.pre.inState(stateVars)};\n" +
-                        "bool post_${it.name} = ${it.contract.post.inState(stateVars)};\n" +
-                        "ALL_PRE_CONDITIONS_VIOLATED = ALL_PRE_CONDITIONS_VIOLATED & !pre_${it.name};\n" +
-                        "ALL_POST_CONDITIONS_VIOLATED = ALL_POST_CONDITIONS_VIOLATED & !post_${it.name};\n" +
-                        "EXISTS_APPLICABLE_CONTRACT = EXISTS_APPLICABLE_CONTRACT | (pre_${it.name} & post_${it.name});\n"
+                    "bool post_${it.name} = ${it.contract.post.inState(stateVars)};\n" +
+                    "ALL_PRE_CONDITIONS_VIOLATED = ALL_PRE_CONDITIONS_VIOLATED & !pre_${it.name};\n" +
+                    "ALL_POST_CONDITIONS_VIOLATED = ALL_POST_CONDITIONS_VIOLATED & !post_${it.name};\n" +
+                    "EXISTS_APPLICABLE_CONTRACT = EXISTS_APPLICABLE_CONTRACT | (pre_${it.name} & post_${it.name});\n"
             }
         }
                 ${contract.transitions.incomingList().joinToString("\n") { it.transitionAssignment() }}
@@ -212,7 +213,7 @@ object CCodeUtils {
                 state->_assume_ = !STATE_IN_NEXT && ALL_PRE_CONDITIONS_VIOLATED;
                 
                 }
-    """.trimIndent()
+        """.trimIndent()
         // ${contract.states.joinToString("\n") { s -> "state->$s=next_$s;" }}
         writeCode(folder, contract.name, content)
     }
@@ -276,7 +277,7 @@ object CCodeUtils {
                 }
             }
         $globalCode            
-        """.trimIndent()
+            """.trimIndent()
         )
     }
 }

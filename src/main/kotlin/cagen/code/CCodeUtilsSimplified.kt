@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -78,7 +78,11 @@ object CCodeUtilsSimplified {
             }
             transitions.forEach { out.println("bool ${it.name} = ${it.from} && ${it.contract.name};") }
 
-            out.println("bool VALID_PRE_COND = ${transitions.joinToString(" || ") { "(${it.from} && pre_${it.contract.name})" }};")
+            out.println(
+                "bool VALID_PRE_COND = ${transitions.joinToString(" || ") {
+                    "(${it.from} && pre_${it.contract.name})"
+                }};"
+            )
             out.println("bool VALID_POST_COND = ${transitions.joinToString(" || ") { "(${it.from} && ${it.name})" }};")
 
             transitions.groupBy { it.to }.toList().forEach { (s, inc) ->
@@ -136,7 +140,7 @@ object CCodeUtilsSimplified {
                 #else
                 assert(!_error_);
                 #endif
-                """.trimIndent()
+            """.trimIndent(),
         )
         append("}")
         return append("}")
@@ -172,7 +176,7 @@ object CCodeUtilsSimplified {
             }
             
             ${model.globalCode}
-        """.trimIndent()
+            """.trimIndent(),
         )
     }
 }

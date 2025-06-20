@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -25,14 +25,14 @@ object SmvFuncExpander {
 
     object SmvFuncExpanderVisitor : SMVAstMutableVisitor() {
         override fun visit(func: SFunction): SMVExpr = when (func.name) {
-                "abs" -> {
-                    val arg = func.arguments.first()
-                    val lit = (arg.dataType ?: SMVTypes.signed(32)).literal(0)
-                    ite(arg lt lit, arg.negate(), arg)
-                }
-
-                else -> super.visit(func)
+            "abs" -> {
+                val arg = func.arguments.first()
+                val lit = (arg.dataType ?: SMVTypes.signed(32)).literal(0)
+                ite(arg lt lit, arg.negate(), arg)
             }
+
+            else -> super.visit(func)
+        }
     }
 }
 

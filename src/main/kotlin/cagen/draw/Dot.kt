@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -16,6 +16,8 @@
  * License along with this program.  If not, see
  * <http://www.gnu.org/licenses/gpl-3.0.html>.
  * *****************************************************************/
+@file:Suppress("unused")
+
 package cagen.draw
 
 import cagen.Contract
@@ -63,21 +65,21 @@ class Dot(writer: Writer) {
         with(contract) {
             print("subgraph cluster_$instance  { bgcolor=\"#cccccc\" \nlabel=\"$instance : ${name}\" \n")
             print("subgraph automaton  { rankDir=lr label=\"\" compound=True ")
-            val count_state = mutableMapOf<String, Int>()
-            val label_state = mutableMapOf<String, String>()
+            val countState = mutableMapOf<String, Int>()
+            val labelState = mutableMapOf<String, String>()
             for (edge in transitions) {
-                if (edge.from !in label_state) {
-                    label_state[edge.from] = "{{" + edge.from
-                    count_state[edge.from] = 0
+                if (edge.from !in labelState) {
+                    labelState[edge.from] = "{{" + edge.from
+                    countState[edge.from] = 0
                 }
-                val cur = count_state[edge.from]
-                count_state[edge.from] = (count_state[edge.from] ?: 0) + 1
+                val cur = countState[edge.from]
+                countState[edge.from] = (countState[edge.from] ?: 0) + 1
                 print("${edge.from}:c$cur -> ${edge.to} [label=\"$cur\"]")
-                label_state[edge.from] = label_state[edge.from] +
-                        "|<c{cur}>{cur}\\n{escapeDotLabel(edge.pre)}\\n{escapeDotLabel(edge.post)}"
+                labelState[edge.from] = labelState[edge.from] +
+                    "|<c{cur}>{cur}\\n{escapeDotLabel(edge.pre)}\\n{escapeDotLabel(edge.post)}"
             }
 
-            for ((node, label) in label_state.entries) {
+            for ((node, label) in labelState.entries) {
                 print("$node [label=\"$label}}\"]")
             }
             print("}")

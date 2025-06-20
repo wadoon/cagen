@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -42,7 +42,10 @@ class PrettyPrinter(writer: Writer = StringWriter()) {
         // model: include* defines? variants* globalCode=CODE? (contract|system)* EOF;
         printDefines(model.globalDefines)
         pp(model.variants)
-        model.globalCode?.let { pp(it); out.println("") }
+        model.globalCode?.let {
+            pp(it)
+            out.println("")
+        }
         pp(model.contracts)
         pp(model.systems)
     }
@@ -119,7 +122,7 @@ class PrettyPrinter(writer: Writer = StringWriter()) {
         when (vv) {
             is Version -> "v${vv.number.joinToString(".")}"
             is Variant -> vv.name
-        }
+        },
     )
 
     fun pp(signature: Signature) {
@@ -141,10 +144,10 @@ class PrettyPrinter(writer: Writer = StringWriter()) {
     fun pp(uc: UseContract) {
         out.println(
             "contract ${uc.contract.name}[${
-            uc.variableMap.joinToString(", ") { (a, b) ->
-                "$a <= ${pp(b)}"
-            }
-        }]"
+                uc.variableMap.joinToString(", ") { (a, b) ->
+                    "$a <= ${pp(b)}"
+                }
+            }]",
         )
     }
 

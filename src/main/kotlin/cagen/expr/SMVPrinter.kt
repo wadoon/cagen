@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -93,39 +93,39 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
         stream.decreaseIndent().nl().print("esac")
     }
 
-    override fun visit(m: SMVModule) {
+    override fun visit(smvModule: SMVModule) {
         stream.print("MODULE ")
-        stream.print(m.name)
-        if (!m.moduleParameters.isEmpty()) {
+        stream.print(smvModule.name)
+        if (!smvModule.moduleParameters.isEmpty()) {
             stream.print("(")
-            m.moduleParameters.forEachIndexed { index, sVariable ->
+            smvModule.moduleParameters.forEachIndexed { index, sVariable ->
                 sVariable.accept(this)
-                if (index + 1 < m.moduleParameters.size) stream.print(", ")
+                if (index + 1 < smvModule.moduleParameters.size) stream.print(", ")
             }
             stream.print(")")
         }
         stream.nl()
 
-        printVariables("IVAR", m.inputVars)
-        printVariables("FROZENVAR", m.frozenVars)
-        printVariables("VAR", m.stateVars)
+        printVariables("IVAR", smvModule.inputVars)
+        printVariables("FROZENVAR", smvModule.frozenVars)
+        printVariables("VAR", smvModule.stateVars)
 
-        printDefinition(m.definitions)
+        printDefinition(smvModule.definitions)
 
-        printSection("LTLSPEC", m.ltlSpec)
-        printSection("CTLSPEC", m.ctlSpec)
-        printSection("INVARSPEC", m.invariantSpecs)
-        printSection("INVAR", m.invariants)
-        printSectionSingle("INIT", m.initExpr)
-        printSectionSingle("TRANS", m.transExpr)
+        printSection("LTLSPEC", smvModule.ltlSpec)
+        printSection("CTLSPEC", smvModule.ctlSpec)
+        printSection("INVARSPEC", smvModule.invariantSpecs)
+        printSection("INVAR", smvModule.invariants)
+        printSectionSingle("INIT", smvModule.initExpr)
+        printSectionSingle("TRANS", smvModule.transExpr)
 
-        if (m.initAssignments.size > 0 || m.nextAssignments.size > 0) {
+        if (smvModule.initAssignments.size > 0 || smvModule.nextAssignments.size > 0) {
             stream.print("ASSIGN").increaseIndent()
-            printAssignments("init", m.initAssignments)
-            printAssignments("next", m.nextAssignments)
+            printAssignments("init", smvModule.initAssignments)
+            printAssignments("next", smvModule.nextAssignments)
             stream.decreaseIndent()
         }
-        stream.nl().print("-- end of module ${m.name}").nl()
+        stream.nl().print("-- end of module ${smvModule.name}").nl()
     }
 
     private fun printSectionSingle(section: String, exprs: List<SMVExpr>) {
@@ -167,9 +167,9 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
     }
 
     override fun visit(func: SFunction) {
-        val FUNCTION_ID_BIT_ACCESS = "<bitaccess>"
+        val functionIdBitAccess = "<bitaccess>"
         when (func.name) {
-            FUNCTION_ID_BIT_ACCESS -> visitBitAccess(func)
+            functionIdBitAccess -> visitBitAccess(func)
         }
 
         stream.print(func.name)
@@ -324,7 +324,9 @@ open class CodeWriter(val stream: Writer = StringWriter()) : Appendable by strea
         return this
     }
 
-    open fun keyword(keyword: String): CodeWriter = printf(if (uppercaseKeywords) keyword.uppercase(Locale.getDefault()) else keyword.lowercase(Locale.getDefault()))
+    open fun keyword(keyword: String): CodeWriter = printf(
+        if (uppercaseKeywords) keyword.uppercase(Locale.getDefault()) else keyword.lowercase(Locale.getDefault())
+    )
 
     fun nl(): CodeWriter {
         write("\n")

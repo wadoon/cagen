@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -18,8 +18,8 @@
  * *****************************************************************/
 package cagen
 
-import cagen.code.CCodeUtilsSimplified
 import cagen.code.CCodeUtils
+import cagen.code.CCodeUtilsSimplified
 import cagen.modelchecker.SmvUtils
 import cagen.modelchecker.asSmvType
 import java.io.PrintWriter
@@ -36,7 +36,8 @@ abstract class ProofObligation(val name: String) {
 /**
  * Verify the implementation against a contract (inv or contract automata)
  * */
-class ImplPOMonitor(val model: Model, val system: System, val contract: UseContract) : ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}") {
+class ImplPOMonitor(val model: Model, val system: System, val contract: UseContract) :
+    ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}") {
     override fun createFiles(folder: Path): List<POTask> {
         val outputFolder = folder / name
         Files.createDirectories(outputFolder)
@@ -54,7 +55,8 @@ class ImplPOMonitor(val model: Model, val system: System, val contract: UseContr
     }
 }
 
-class ImplPOMonitorSimplified(val model: Model, val system: System, val contract: UseContract) : ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}_simple") {
+class ImplPOMonitorSimplified(val model: Model, val system: System, val contract: UseContract) :
+    ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}_simple") {
     override fun createFiles(folder: Path): List<POTask> {
         val outputFile = folder / "$name.c"
         Files.createDirectories(outputFile.parent)
@@ -75,17 +77,18 @@ class ImplPOMonitorSimplified(val model: Model, val system: System, val contract
 
 data class POTask(val taskName: String = "", val command: String = "")
 
-class ValidityPO(val model: Model, val system: System, val contract: UseContract) : ProofObligation("PO_${system.name}_composition_refine") {
+class ValidityPO(val model: Model, val system: System, val contract: UseContract) :
+    ProofObligation("PO_${system.name}_composition_refine") {
     override fun createFiles(folder: Path): List<POTask> {
         val contracts = listOf(contract.contract) +
-                system.signature.instances.map { (it.type as SystemType).system.contracts.first().contract }
+            system.signature.instances.map { (it.type as SystemType).system.contracts.first().contract }
 
         val filename = folder / "$name.smv"
 
         filename.writeText(
             SmvUtils.toSmv(model, system, contract) +
-                    "\n----\n" + SmvUtils.toSmv(model, contract.contract) + "\n----\n" +
-                    "\n----\n" + createHistoryModules(contracts)
+                "\n----\n" + SmvUtils.toSmv(model, contract.contract) + "\n----\n" +
+                "\n----\n" + createHistoryModules(contracts)
         )
 
         filename.parent.resolve("ic3.xmv").writeText(
@@ -100,7 +103,7 @@ class ValidityPO(val model: Model, val system: System, val contract: UseContract
             build_boolean_model
             check_invar_ic3 -v 5
             quit
-        """.trimIndent()
+            """.trimIndent()
         )
 
         return listOf(POTask(name, "nuXmv -source ic3.xmv ${filename.fileName}"))
@@ -139,16 +142,18 @@ private fun createHistoryModule(depth: Int, type: Type): String {
             DEFINE _0 := input;
             ASSIGN
             $assigns
-        """.trimIndent()
+    """.trimIndent()
 }
 
-class ContractRefinementPO(val model: Model, val contract: Contract, val refined: UseContract) : ProofObligation("PO_${contract.name}_refines_${refined.contract.name}") {
+class ContractRefinementPO(val model: Model, val contract: Contract, val refined: UseContract) :
+    ProofObligation("PO_${contract.name}_refines_${refined.contract.name}") {
     override fun createFiles(folder: Path): List<POTask> {
         val sub = contract.signature.all
         for (variable in refined.contract.signature.all) {
             if (variable !in sub && variable.name notin refined.variableMap) {
                 error(
-                    "Variable ${variable.name} defined in parent contract '${refined.contract.name}'" + " is not defined in child contract '${contract.name}'"
+                    "Variable ${variable.name} defined in parent contract '${refined.contract.name}'" +
+                        " is not defined in child contract '${contract.name}'"
                 )
             }
         }
@@ -160,10 +165,10 @@ class ContractRefinementPO(val model: Model, val contract: Contract, val refined
                 contract,
                 refined
             ) + "\n----\n" + SmvUtils.toSmv(model, contract) + "\n----\n" +
-                    SmvUtils.toSmv(model, refined.contract) + "\n----\n" + createHistoryModules(
-                contract,
-                refined.contract
-            )
+                SmvUtils.toSmv(model, refined.contract) + "\n----\n" + createHistoryModules(
+                    contract,
+                    refined.contract
+                )
         )
 
         filename.parent.resolve("ic3.xmv").writeText(
@@ -178,7 +183,7 @@ class ContractRefinementPO(val model: Model, val contract: Contract, val refined
             build_boolean_model
             check_invar_ic3 -v 5
             quit
-        """.trimIndent()
+            """.trimIndent()
         )
 
         return listOf(POTask(name, "nuXmv -source ic3.xmv ${filename.fileName}"))
@@ -198,9 +203,9 @@ fun createProofObligations(model: Model): List<ProofObligation> {
     for (c in model.systems) {
         if (c.code != null) {
             c.contracts.forEach {
-            obligations.add(ImplPOMonitor(model, c, it))
-            obligations.add(ImplPOMonitorSimplified(model, c, it))
-        }
+                obligations.add(ImplPOMonitor(model, c, it))
+                obligations.add(ImplPOMonitorSimplified(model, c, it))
+            }
         } else {
             c.contracts.forEach {
                 obligations.add(ValidityPO(model, c, it))

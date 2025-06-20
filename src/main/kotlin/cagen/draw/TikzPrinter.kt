@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -16,6 +16,8 @@
  * License along with this program.  If not, see
  * <http://www.gnu.org/licenses/gpl-3.0.html>.
  * *****************************************************************/
+@file:Suppress("unused")
+
 package cagen.draw
 
 import cagen.*
@@ -44,12 +46,12 @@ class TikzPrinter(writer: Writer) {
     fun tikz(comps: List<Component>) {
         println("\\begin{tikzpicture}")
         for (c in comps) {
-            c.print_tikz("toplevel")
+            c.printTikz("toplevel")
         }
         println("\\end{tikzpicture}")
     }
 
-    fun tikz_standalone(comps: List<Component>) {
+    fun tikzStandalone(comps: List<Component>) {
         println(
             """
 \documentclass{standalone}
@@ -83,11 +85,11 @@ class TikzPrinter(writer: Writer) {
         println("\\end{document}")
     }
 
-    private fun __print_tikz_node(name: String, label: String, style: String = "") {
+    private fun printTikzNode(name: String, label: String, style: String = "") {
         println("\\node[$style] ($name) {$label};")
     }
 
-    private fun __structured_label(instance: String, signature: Signature) {
+    private fun structuredLabel(instance: String, signature: Signature) {
         signature.inputs.forEachIndexed { index, (name, type) ->
             println("\\attachinput{$instance}{$index}{$name}{$type}")
         }
@@ -96,47 +98,46 @@ class TikzPrinter(writer: Writer) {
         }
     }
 
-    fun Component.print_tikz(instance: String = "") =
-        when (this) {
-            is System -> this.print_tikz(instance)
-            is Contract -> this.print_tikz(instance)
-        }
+    fun Component.printTikz(instance: String = "") = when (this) {
+        is System -> this.printTikz(instance)
+        is Contract -> this.printTikz(instance)
+    }
     // __print_tikz_node(instance, "$instance:$name", "component")
     // __structured_label(instance, signature)
 
-    fun System.print_tikz(instance: String) {
-        __print_tikz_node(instance, "$instance:$name", "component")
-        __structured_label(instance, signature)
+    fun System.printTikz(instance: String) {
+        printTikzNode(instance, "$instance:$name", "component")
+        structuredLabel(instance, signature)
         contracts.forEach {
             println("\\draw[->,contract] ({instance}) -- (${it.contract.name});")
         }
     }
 
-    fun Contract.print_tikz(instance: String) {
+    fun Contract.printTikz(instance: String) {
         var label = "\\begin{tikzpicture}"
-        val label_state = hashMapOf<String, MutableList<String>>()
-        val edge_num = hashMapOf<CATransition, Int>()
+        val labelState = hashMapOf<String, MutableList<String>>()
+        val edgeNum = hashMapOf<CATransition, Int>()
         for (edge in transitions) {
-            if (edge.from !in label_state) {
-                label_state[edge.from] = arrayListOf()
-                edge_num[edge] = label_state[edge.from]?.size ?: 0
+            if (edge.from !in labelState) {
+                labelState[edge.from] = arrayListOf()
+                edgeNum[edge] = labelState[edge.from]?.size ?: 0
             }
-            label_state[edge.from]?.add(
-                "\\calabel{${edge_num[edge]}}{${edge.contract.pre}}{${edge.contract.post}}"
+            labelState[edge.from]?.add(
+                "\\calabel{${edgeNum[edge]}}{${edge.contract.pre}}{${edge.contract.post}}"
             )
         }
 
-        for ((node, lbl) in label_state.entries) {
+        for ((node, lbl) in labelState.entries) {
             label += "\\node[ca-state] ($node) {$lbl};"
         }
 
         for (edge in transitions) {
-            label += "\\draw[->,ca-edge] (${edge.from}) -- node[auto] {${edge_num[edge]}} (${edge.to});"
+            label += "\\draw[->,ca-edge] (${edge.from}) -- node[auto] {${edgeNum[edge]}} (${edge.to});"
         }
 
         label += "\\end{tikzpicture}"
-        __print_tikz_node(instance, instance + ":" + name + label, "ca")
-        __structured_label(instance, signature)
+        printTikzNode(instance, instance + ":" + name + label, "ca")
+        structuredLabel(instance, signature)
     }
 
     /*
@@ -154,10 +155,10 @@ if self.use_contract:
 println(f"\\draw[->,contract] {instance} -- {obj.use_contract.contract.name};")
 */
 
-    fun print_tikz_cs_(self: System, instance: String) {
+    fun printTikzCs(self: System, instance: String) {
         println("\\node[composed] ($instance) {$instance\\\\begin{tikzpicture}")
         for (variable in self.signature.instances) {
-            (variable.type as SystemType).system.print_tikz(variable.name)
+            (variable.type as SystemType).system.printTikz(variable.name)
         }
 
         fun edgeNode(a: Variable, port: String): String {
@@ -173,7 +174,7 @@ println(f"\\draw[->,contract] {instance} -- {obj.use_contract.contract.name};")
             println("\\draw[->,port] ($start) -- ($end);")
         }
         println("\\end{tikzpicture}")
-        __structured_label(instance, self.signature)
+        structuredLabel(instance, self.signature)
     }
 
     /*fun AGContract.print_tikz(instance: String = "") {

@@ -1,7 +1,7 @@
 /* *****************************************************************
  * This file belongs to cagen (https://github.com/wadoon/cagen).
  * SPDX-License-Header: GPL-3.0-or-later
- * 
+ *
  * This program isType free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -60,10 +60,10 @@ class AppContext(verbose: Boolean, var version: String? = null, var variants: Li
     fun load(file: File): Model {
         val model = ParserFacade.loadFile(file)
         val vv = (version?.let { listOf(Version(it)) } ?: listOf()) +
-                variants.map {
-                    model.findVariant(it)
-                        ?: error("Could not find variant $it. Check your `variants` definition in the given file")
-                }
+            variants.map {
+                model.findVariant(it)
+                    ?: error("Could not find variant $it. Check your `variants` definition in the given file")
+            }
         if (vv.isNotEmpty()) {
             model.activateVersion(vv)
         }
@@ -138,7 +138,7 @@ class DotCommand : CliktCommand() {
         val dot = Dot.asString {
             printDot(
                 model.findSystemByName(topLevelSystem)
-                    ?: error("Could not find system by name $topLevelSystem.")
+                    ?: error("Could not find system by name $topLevelSystem."),
             )
         }
         return dot
@@ -155,7 +155,7 @@ class TikzCommand : CliktCommand() {
     override fun run() {
         val (sys, contracts) = context.load(inputFile)
         val s = if (!fragment) {
-            TikzPrinter.asString { tikz_standalone(sys + contracts) }
+            TikzPrinter.asString { tikzStandalone(sys + contracts) }
         } else {
             TikzPrinter.asString { tikz(sys + contracts) }
         }
@@ -168,9 +168,10 @@ class TikzCommand : CliktCommand() {
 }
 
 class VVSlice : CliktCommand(name = "vvslice") {
-    override fun help(context: Context) = """Slices a given system model given by the version and variants information. 
-    |Use with an empty version or variants results into a pretty printed and identical system.
-""".trimMargin()
+    override fun help(context: Context) = """
+        |Slices a given system model given by the version and variants information. 
+        |Use with an empty version or variants results into a pretty printed and identical system.
+    """.trimMargin()
 
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val output by option("-o", OUTPUT).default("-")
@@ -244,7 +245,7 @@ class Verify : CliktCommand() {
                     appendLine("$name:")
                     appendLine("\t$command")
                 }
-            }
+            },
         )
     }
 }
