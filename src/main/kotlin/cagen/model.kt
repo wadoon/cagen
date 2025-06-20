@@ -1,3 +1,21 @@
+/* *****************************************************************
+ * This file belongs to cagen (https://github.com/wadoon/cagen).
+ * SPDX-License-Header: GPL-3.0-or-later
+ * 
+ * This program isType free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program isType distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a clone of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * *****************************************************************/
 @file:Suppress("MemberVisibilityCanBePrivate", "unused")
 
 package cagen
@@ -22,7 +40,6 @@ data class Model(
     fun activateVersion(current: List<VV>) = contracts.forEach { it.activateVersion(current) }
     fun findSystemByName(name: String): System? = systems.find { it.name == name }
 }
-
 
 sealed interface Component {
     val name: String
@@ -163,7 +180,8 @@ data class PrePost(
 
 data class CATransition(
     val name: String,
-    val from: String, val to: String,
+    val from: String,
+    val to: String,
     val vvGuard: VVGuard,
     val contract: PrePost
 )
@@ -202,12 +220,16 @@ private fun toporder(
         remPorts.all { (_, to) -> to.variable != v }
     }
 
-    if (front.isEmpty() && ports.isNotEmpty())
+    if (front.isEmpty() && ports.isNotEmpty()) {
         error("We have a problem building the topological order. Check for cycles!")
+    }
 
     fun variable(v: IOPort): String =
-        if (v.variable.name == "self") "state->${v.portName}"
-        else "state->${v.variable.name}.${v.portName}"
+        if (v.variable.name == "self") {
+            "state->${v.portName}"
+        } else {
+            "state->${v.variable.name}.${v.portName}"
+        }
 
     val s = buildString {
         for (variable in front) {
@@ -239,12 +261,16 @@ private fun topordersys(
         remPorts.all { (_, to) -> to.variable != v }
     }
 
-    if (front.isEmpty() && ports.isNotEmpty())
+    if (front.isEmpty() && ports.isNotEmpty()) {
         error("We have a problem building the topological order. Check for cycles!")
+    }
 
     fun variable(v: IOPort): String =
-        if (v.variable.name == "self") "state->${v.portName}"
-        else "state->${v.variable.name}.${v.portName}"
+        if (v.variable.name == "self") {
+            "state->${v.portName}"
+        } else {
+            "state->${v.variable.name}.${v.portName}"
+        }
 
     for (variable in front) {
         val incoming = ports.filter { it.second.variable == variable }
@@ -263,9 +289,7 @@ data class VVGuard(val values: List<VVRange> = listOf()) {
         return values.all { it.evaluate(current) }
     }
 
-    infix fun and(other: VVGuard): VVGuard {
-        return VVGuard(values + other.values)
-    }
+    infix fun and(other: VVGuard): VVGuard = VVGuard(values + other.values)
 
     companion object {
         val DEFAULT: VVGuard = VVGuard()
@@ -327,9 +351,7 @@ data class Variant(val family: VariantFamily, val name: String) : VV() {
         return true
     }
 
-    override fun hashCode(): Int {
-        return name.hashCode()
-    }
+    override fun hashCode(): Int = name.hashCode()
 }
 
 data class Version(val number: List<Int>) : VV() {

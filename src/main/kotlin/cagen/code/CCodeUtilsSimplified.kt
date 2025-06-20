@@ -1,3 +1,21 @@
+/* *****************************************************************
+ * This file belongs to cagen (https://github.com/wadoon/cagen).
+ * SPDX-License-Header: GPL-3.0-or-later
+ * 
+ * This program isType free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program isType distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a clone of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * *****************************************************************/
 package cagen.code
 
 import cagen.*
@@ -25,7 +43,7 @@ object CCodeUtilsSimplified {
 
             out.println(
                 """
-                void init_${name}() { 
+                void init_$name() { 
                     _error_=false; _final_=false; _assume_=false;
                 """
             )
@@ -42,7 +60,7 @@ object CCodeUtilsSimplified {
             }
             out.println("}")
 
-            out.println("void next_${name}() {")
+            out.println("void next_$name() {")
             history.forEach { (n, d) ->
                 // val t = signature.get(n)?.type?.toC()
                 (d downTo 1).forEach {
@@ -52,7 +70,6 @@ object CCodeUtilsSimplified {
             }
 
             fun assignb(v: String, e: SMVExpr) = out.println("bool $v = ${e.toCExpr()};")
-
 
             contracts.forEach {
                 assignb("pre_${it.name}", it.pre)
@@ -80,13 +97,13 @@ object CCodeUtilsSimplified {
         signature.all.forEach {
             append("${it.type.toC()} $prefix${it.name};")
         }
-        append("void init_$prefix${name}() {")
+        append("void init_$prefix$name() {")
         signature.all.filter { it.initValue != null }.forEach {
             append("$prefix${it.name} = ${it.initValue.toCExpr()};")
         }
         append("}")
 
-        append("void next_$prefix${name}() {")
+        append("void next_$prefix$name() {")
         signature.all.forEach {
             append("${it.type.toC()} ${it.name} = $prefix${it.name};")
         }
@@ -109,7 +126,7 @@ object CCodeUtilsSimplified {
         append("next_sys_${system.name}();")
         contract.variableMap.forEach { (cv, sv) ->
             val n = CCodeUtils.applySubst(sv)
-            append("$cv = sys_${n};")
+            append("$cv = sys_$n;")
         }
         append(
             """

@@ -1,3 +1,21 @@
+/* *****************************************************************
+ * This file belongs to cagen (https://github.com/wadoon/cagen).
+ * SPDX-License-Header: GPL-3.0-or-later
+ * 
+ * This program isType free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program isType distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a clone of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * *****************************************************************/
 @file:Suppress("unused", "unused", "UNUSED_VARIABLE")
 
 package cagen.expr
@@ -6,7 +24,6 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import java.util.*
 import java.util.regex.Pattern
-
 
 /**
  * Defines an SMV operator by name and precedence.
@@ -32,9 +49,7 @@ data class SAssignment(
     var target: SVariable,
     var expr: SMVExpr
 ) : SMVAst() {
-    override fun <T> accept(visitor: SMVAstVisitor<T>): T {
-        return visitor.visit(this)
-    }
+    override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
     override fun clone() = copy()
 }
@@ -45,20 +60,15 @@ data class SBinaryExpression(
     var right: SMVExpr
 ) : SMVExpr() {
 
-
     override val dataType: SMVType?
         get() = SMVTypes.infer(operator, left.dataType, right.dataType)
 
-    override fun prefix(prefix: String): SBinaryExpression {
-        return SBinaryExpression(
+    override fun prefix(prefix: String): SBinaryExpression = SBinaryExpression(
             left.prefix(prefix),
             operator, right.prefix(prefix)
         )
-    }
 
-    override fun <T> accept(visitor: SMVAstVisitor<T>): T {
-        return visitor.visit(this)
-    }
+    override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
     override fun clone() = SBinaryExpression(left.clone(), operator, right.clone())
 }
@@ -77,7 +87,6 @@ operator fun SMVExpr.contains(e: SBinaryExpression): Boolean {
     return f.found
 }
 
-
 data class SCaseExpression(var cases: MutableList<Case> = arrayListOf()) : SMVExpr() {
     override val dataType: SMVType?
         get() {
@@ -94,8 +103,9 @@ data class SCaseExpression(var cases: MutableList<Case> = arrayListOf()) : SMVEx
         if (cases.size == 0) return this
         val firstCase = cases[0]
         val b = cases.stream().allMatch { aCase -> firstCase.then == aCase.then }
-        if (b)
+        if (b) {
             return firstCase.then
+        }
         //
         val esac = SCaseExpression()
         var previous = firstCase
@@ -115,9 +125,7 @@ data class SCaseExpression(var cases: MutableList<Case> = arrayListOf()) : SMVEx
         return esac
     }
 
-    override fun <T> accept(visitor: SMVAstVisitor<T>): T {
-        return visitor.visit(this)
-    }
+    override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
     override fun prefix(prefix: String): SCaseExpression {
         val sCaseExpression = SCaseExpression()
@@ -143,7 +151,6 @@ data class SCaseExpression(var cases: MutableList<Case> = arrayListOf()) : SMVEx
     override fun clone() = SCaseExpression(cases.map { it.clone() }.toMutableList())
 }
 
-
 /**
  * @author Alexander Weigl
  * @version 1 (12.12.16)
@@ -162,14 +169,12 @@ data class SFunction(
 
     override fun clone() = SFunction(name, arguments.map { it.clone() })
 
-    override fun <T> accept(visitor: SMVAstVisitor<T>): T {
-        return visitor.visit(this)
-    }
+    override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
-    override fun prefix(prefix: String): SFunction {
-        return SFunction(name,
-            arguments.map { a -> a.prefix(prefix) })
-    }
+    override fun prefix(prefix: String): SFunction = SFunction(
+        name,
+            arguments.map { a -> a.prefix(prefix) }
+    )
 }
 
 fun ite(cond: SMVExpr, then: SMVExpr, otherwise: SMVExpr) = SCaseExpression().apply {
@@ -267,7 +272,6 @@ data class SGenericLiteral(
     override fun clone() = copy()
 }
 
-
 abstract class SMVExpr : SMVAst() {
     abstract val dataType: SMVType?
 
@@ -309,7 +313,6 @@ abstract class SMVExpr : SMVAst() {
     infix fun eq(e: SMVExpr) = op(SBinaryOperator.EQUAL, e)
     infix fun neq(e: SMVExpr) = op(SBinaryOperator.NOT_EQUAL, e)
 
-
     operator fun not(): SUnaryExpression = SUnaryExpression(SUnaryOperator.NEGATE, this)
 
     fun negate(): SUnaryExpression = SUnaryExpression(SUnaryOperator.MINUS, this)
@@ -319,9 +322,7 @@ abstract class SMVExpr : SMVAst() {
     /**
      * prefiexed and expression
      */
-    fun inModule(module: SVariable): SMVExpr {
-        return inModule(module.name)
-    }
+    fun inModule(module: SVariable): SMVExpr = inModule(module.name)
 
     fun inModule(module: String) = prefix("$module.")
     abstract fun prefix(prefix: String): SMVExpr
@@ -329,7 +330,7 @@ abstract class SMVExpr : SMVAst() {
     fun wordConcat(b: SMVExpr): SMVExpr =
         op(SBinaryOperator.WORD_CONCAT, b)
 
-    //fun bitAccess(from: Long, to: Long) = SMVFacade.bitAccess(this, from, to)
+    // fun bitAccess(from: Long, to: Long) = SMVFacade.bitAccess(this, from, to)
 
     /*operator fun get(range: IntRange): SMVExpr {
         return bitAccess(range.start.toLong(), range.last.toLong())
@@ -351,10 +352,7 @@ operator fun MutableList<SAssignment>.set(eq: SVariable, value: SMVExpr) {
     this.add(SAssignment(eq, value))
 }
 
-operator fun MutableList<SAssignment>.get(eq: SVariable): SMVExpr? {
-    return this.find { it.target == eq }?.expr
-}
-
+operator fun MutableList<SAssignment>.get(eq: SVariable): SMVExpr? = this.find { it.target == eq }?.expr
 
 data class SMVModule
 @JvmOverloads constructor(
@@ -382,9 +380,7 @@ data class SMVModule
     var initExpr: MutableList<SMVExpr> = ArrayList(),
     var definitions: MutableList<SAssignment> = ArrayList()
 ) : SMVAst() {
-    override fun <T> accept(visitor: SMVAstVisitor<T>): T {
-        return visitor.visit(this)
-    }
+    override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
     override fun clone() = copy()
 }
@@ -409,20 +405,18 @@ data class SFieldAccess(var expr: SMVExpr, var sub: SVariable) : SMVExpr() {
     override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 }
 
-data class SVariable(var name: String) : SMVExpr(), Comparable<SVariable> {
+data class SVariable(var name: String) :
+    SMVExpr(),
+    Comparable<SVariable> {
     override var dataType: SMVType? = null
 
     constructor(n: String, dt: SMVType) : this(n) {
         dataType = dt
     }
 
-    override fun <T> accept(visitor: SMVAstVisitor<T>): T {
-        return visitor.visit(this)
-    }
+    override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
-    override fun compareTo(other: SVariable): Int {
-        return name.compareTo(other.name)
-    }
+    override fun compareTo(other: SVariable): Int = name.compareTo(other.name)
 
     /*override fun toString(): String {
         return name
@@ -430,9 +424,7 @@ data class SVariable(var name: String) : SMVExpr(), Comparable<SVariable> {
 
     override fun clone() = copy().also { it.dataType = dataType }
 
-    override fun prefix(prefix: String): SVariable {
-        return create("$prefix$name").with(dataType)
-    }
+    override fun prefix(prefix: String): SVariable = create("$prefix$name").with(dataType)
 
     infix fun assignTo(expr: SMVExpr) = SAssignment(this, expr)
 
@@ -453,20 +445,15 @@ data class SVariable(var name: String) : SMVExpr(), Comparable<SVariable> {
         fun withUnsigned(width: Int): SVariable =
             with(width, false)
 
-        fun asBool(): SVariable {
-            return with(SMVTypes.BOOLEAN)
-        }
+        fun asBool(): SVariable = with(SMVTypes.BOOLEAN)
     }
 
     companion object {
         fun bool(name: String) = Builder(name).asBool()
         fun create(name: String) = Builder(name)
-        fun create(fmt: String, vararg values: Any): Builder {
-            return create(String.format(fmt, *values))
-        }
+        fun create(fmt: String, vararg values: Any): Builder = create(String.format(fmt, *values))
     }
 }
-
 
 /*
  * The order of parsing precedence for operators from high to low is:
@@ -586,13 +573,9 @@ enum class SBinaryOperator(private val symbol: String, private val precedence: I
 
     WORD_CONCAT("::", 10);
 
-    override fun precedence(): Int {
-        return precedence
-    }
+    override fun precedence(): Int = precedence
 
-    override fun symbol(): String {
-        return symbol
-    }
+    override fun symbol(): String = symbol
 
     companion object {
 
@@ -606,7 +589,6 @@ enum class SBinaryOperator(private val symbol: String, private val precedence: I
         }
     }
 }
-
 
 /**
  * @author Alexander Weigl
@@ -628,17 +610,13 @@ data class SQuantified(
             ArrayList(quantified.map { a -> a.prefix(prefix) })
         )
 
-    override fun <T> accept(visitor: SMVAstVisitor<T>): T {
-        return visitor.visit(this)
-    }
+    override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
     operator fun set(i: Int, value: SMVExpr): SMVExpr = quantified.set(i, value)
     operator fun get(i: Int) = quantified[i]
 
     override fun clone() = SQuantified(operator, quantified.map { it.clone() }.toMutableList())
-
 }
-
 
 /**
  * @author Alexander Weigl
@@ -673,19 +651,16 @@ enum class STemporalOperator(
     AF(TemporalLanguage.CTL, 2, "AF", ""),
     AX(TemporalLanguage.CTL, 2, "AX", "");
 
-    fun arity(): Int {
-        return arity
-    }
+    fun arity(): Int = arity
 
-    fun symbol(): String {
-        return symbol
-    }
+    fun symbol(): String = symbol
 
     enum class TemporalLanguage {
-        LTL, CTL, PSL
+        LTL,
+        CTL,
+        PSL
     }
 }
-
 
 /**
  *
@@ -704,21 +679,16 @@ data class SUnaryExpression(
     override val dataType: SMVType?
         get() = expr.dataType
 
-    override fun prefix(prefix: String): SUnaryExpression {
-        return SUnaryExpression(operator, expr.prefix(prefix))
-    }
+    override fun prefix(prefix: String): SUnaryExpression = SUnaryExpression(operator, expr.prefix(prefix))
 
     override fun clone() = SUnaryExpression(operator, expr.clone())
 
-    override fun <T> accept(visitor: SMVAstVisitor<T>): T {
-        return visitor.visit(this)
-    }
+    override fun <T> accept(visitor: SMVAstVisitor<T>): T = visitor.visit(this)
 
     /*override fun toString(): String {
         return operator.symbol() + expr
     }*/
 }
-
 
 /**
  *
@@ -734,19 +704,12 @@ enum class SUnaryOperator(private val symbol: String, private val precedence: In
      */
     MINUS("-", 3);
 
-    override fun precedence(): Int {
-        return precedence
-    }
+    override fun precedence(): Int = precedence
 
-    override fun symbol(): String {
-        return symbol
-    }
+    override fun symbol(): String = symbol
 
-    override fun toString(): String {
-        return symbol()
-    }
+    override fun toString(): String = symbol()
 }
-
 
 interface SMVAstVisitor<out T> {
     fun visit(top: SMVAst): T
@@ -761,7 +724,6 @@ interface SMVAstVisitor<out T> {
     fun visit(quantified: SQuantified): T
     fun visit(access: SFieldAccess): T
     fun visit(access: SArrayAccess): T
-
 }
 
 /**
@@ -784,7 +746,6 @@ open class SMVAstDefaultVisitor<T> : SMVAstVisitor<T?> {
     override fun visit(access: SArrayAccess): T? = defaultVisit(access)
 }
 
-
 abstract class SMVAstDefaultVisitorNN<T> : SMVAstVisitor<T> {
     protected abstract fun defaultVisit(top: SMVAst): T
     override fun visit(top: SMVAst): T = defaultVisit(top)
@@ -800,7 +761,6 @@ abstract class SMVAstDefaultVisitorNN<T> : SMVAstVisitor<T> {
     override fun visit(access: SFieldAccess): T = defaultVisit(access)
     override fun visit(access: SArrayAccess): T = defaultVisit(access)
 }
-
 
 open class SMVAstScanner : SMVAstVisitor<Unit> {
     override fun visit(top: SMVAst) = defaultVisit(top)
@@ -850,7 +810,6 @@ open class SMVAstScanner : SMVAstVisitor<Unit> {
     override fun visit(quantified: SQuantified) {
         quantified.quantified
             .forEach { it.accept(this) }
-
     }
 
     override fun visit(access: SArrayAccess) {
@@ -923,9 +882,7 @@ abstract class SMVAstMutableVisitor : SMVAstVisitor<SMVAst> {
         return access
     }
 
-    override fun visit(func: SFunction): SMVExpr {
-        return func
-    }
+    override fun visit(func: SFunction): SMVExpr = func
 
     override fun visit(quantified: SQuantified): SMVExpr {
         quantified.quantified = quantified.quantified
@@ -942,18 +899,16 @@ abstract class SMVAstMutableVisitor : SMVAstVisitor<SMVAst> {
 }
 
 class VariableReplacer(val map: Map<out SMVExpr, SMVExpr>) : SMVAstMutableVisitor() {
-    override fun visit(v: SVariable): SMVExpr {
-        return map.getOrDefault(v, v)
-    }
+    override fun visit(v: SVariable): SMVExpr = map.getOrDefault(v, v)
 }
 
 open class ExpressionReplacer(val assignments: Map<out SMVExpr, SMVExpr>) : SMVAstMutableVisitor() {
     private var changed = false
     protected open fun replace(x: SMVExpr): SMVExpr {
         val a = assignments[x]
-        return if (a == null)
+        return if (a == null) {
             super.visit(x) as SMVExpr
-        else {
+        } else {
             changed = true
             a
         }
@@ -1035,8 +990,11 @@ open class ExpressionReplacerRecur(private val assignments: Map<out SMVExpr, SMV
         var a = x
         do {
             val nxt = assignments[a]
-            if (nxt != null) a = nxt
-            else break
+            if (nxt != null) {
+                a = nxt
+            } else {
+                break
+            }
         } while (true)
 
         changed = changed || a != x
@@ -1050,7 +1008,6 @@ open class ExpressionReplacerRecur(private val assignments: Map<out SMVExpr, SMV
     override fun visit(func: SFunction): SMVExpr = replace(func)
     override fun visit(quantified: SQuantified): SMVExpr = replace(quantified)
 }
-
 
 /**
  *
@@ -1086,20 +1043,19 @@ data class SMVWordType(
         return BigInteger.ZERO
     }
 
-    override fun repr(): String {
-        return String.format(
+    override fun repr(): String = String.format(
             "%s word[%d]",
-            if (signed) "signed"
-            else "unsigned", width
+            if (signed) {
+                "signed"
+            } else {
+                "unsigned"
+            },
+                width
         )
-    }
 
-    override fun allowedValue(obj: Any): Boolean {
-        return obj is BigInteger
-    }
+    override fun allowedValue(obj: Any): Boolean = obj is BigInteger
 
-    override fun format(value: Any): String {
-        return when (value) {
+    override fun format(value: Any): String = when (value) {
             is BigInteger ->
                 String.format(
                     "%s0%sd%d_%s",
@@ -1113,7 +1069,6 @@ data class SMVWordType(
             is Int -> format(BigInteger.valueOf(value.toLong()))
             else -> error("not implemented for ${value.javaClass}")
         }
-    }
 }
 
 object SMVTypes {
@@ -1144,14 +1099,10 @@ object SMVTypes {
     }
 
     @JvmStatic
-    fun infer(list: List<SMVType>): SMVType? {
-        return if (list.stream().allMatch { a -> a == list[0] }) list[0] else null
-    }
-
+    fun infer(list: List<SMVType>): SMVType? = if (list.stream().allMatch { a -> a == list[0] }) list[0] else null
 
     @JvmStatic
-    fun infer(op: SBinaryOperator, a: SMVType?, b: SMVType?): SMVType? {
-        return when (op) {
+    fun infer(op: SBinaryOperator, a: SMVType?, b: SMVType?): SMVType? = when (op) {
             SBinaryOperator.AND -> BOOLEAN
             SBinaryOperator.OR -> BOOLEAN
             SBinaryOperator.LESS_THAN -> BOOLEAN
@@ -1167,22 +1118,15 @@ object SMVTypes {
             SBinaryOperator.WORD_CONCAT -> TODO()
             else -> infer(a, b)
         }
-    }
 
     @JvmStatic
-    fun infer(a: SMVType?, b: SMVType?): SMVType? {
-        return if (a == b) a else null
-    }
+    fun infer(a: SMVType?, b: SMVType?): SMVType? = if (a == b) a else null
 
     @JvmStatic
-    fun unsigned(i: Int): SMVWordType {
-        return SMVWordType(false, i)
-    }
+    fun unsigned(i: Int): SMVWordType = SMVWordType(false, i)
 
     @JvmStatic
-    fun signed(i: Int): SMVWordType {
-        return SMVWordType(true, i)
-    }
+    fun signed(i: Int): SMVWordType = SMVWordType(true, i)
 }
 
 data class EnumType(var values: List<String>) : SMVType {
@@ -1199,15 +1143,16 @@ data class EnumType(var values: List<String>) : SMVType {
         return SEnumLiteral(str, this)
     }
 
-    override fun toString(): String {
-        return if (values.isEmpty()) "{}"
-        else
-            values.joinToString(", ", "{", "}") { format(it) }
+    override fun toString(): String = if (values.isEmpty()) {
+        "{}"
+    } else {
+        values.joinToString(", ", "{", "}") { format(it) }
     }
 }
 
 data class ModuleType(
-    val moduleName: String, val parameters: List<SMVExpr>
+    val moduleName: String,
+    val parameters: List<SMVExpr>
 ) : SMVType {
     override fun format(value: Any): String = error("not implemented")
     override fun read(str: String): Any = error("not implemented")
@@ -1222,12 +1167,12 @@ data class ModuleType(
     override fun toString(): String {
         val params = if (parameters.isNotEmpty()) {
             parameters.joinToString(", ") { it.repr() }
-        } else ""
-        return "${moduleName}($params)"
-
+        } else {
+            ""
+        }
+        return "$moduleName($params)"
     }
 }
-
 
 /**
  * @author Alexander Weigl
@@ -1255,7 +1200,6 @@ object FunctionTypeSolvers {
 
     fun specificType(dt: SMVType): FunctionTypeSolver = { dt }
 }
-
 
 fun Iterable<SMVExpr>.joinToExpr(operator: SBinaryOperator): SMVExpr =
     reduce { a, b -> a.op(operator, b) }

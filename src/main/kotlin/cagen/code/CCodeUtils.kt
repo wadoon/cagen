@@ -1,3 +1,21 @@
+/* *****************************************************************
+ * This file belongs to cagen (https://github.com/wadoon/cagen).
+ * SPDX-License-Header: GPL-3.0-or-later
+ * 
+ * This program isType free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program isType distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a clone of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * *****************************************************************/
 package cagen.code
 
 import cagen.*
@@ -46,7 +64,7 @@ object CCodeUtils {
                 ${signature.instances.joinToString("\n") { "init_${it.type.name}(&state->${it.name});" }}
             }
 
-            void next_${name}(${name}_state* state) {
+            void next_$name(${name}_state* state) {
             ${
             if (code != null) {
                 signature.all.typesOverwriteWithStage() + "\n" + code + "\n" + signature.all.assignStage()
@@ -85,20 +103,20 @@ object CCodeUtils {
               ${signature.internals.declvars()}
             } ${name}_state;
 
-            void init_${name}(${name}_state* state);
-            void next_${name}(${name}_state* state);           
+            void init_$name(${name}_state* state);
+            void next_$name(${name}_state* state);           
         """.trimIndent()
         writeHeader(folder, system.name, headerContent)
     }
 
     private fun writeHeader(folder: Path, name: String, headerContent: String) {
-        val headerFilename = folder / "${name}.h"
+        val headerFilename = folder / "$name.h"
         headerFilename.writeText(headerContent)
         println("Write header of $name to $headerFilename")
     }
 
     private fun writeCode(folder: Path, name: String, code: String) {
-        val headerFilename = folder / "${name}.c"
+        val headerFilename = folder / "$name.c"
         headerFilename.writeText(code)
         println("Write code of $name to $headerFilename")
     }
@@ -144,8 +162,8 @@ object CCodeUtils {
               
             } ${contract.name}_state;
 
-            void init_${name}(${name}_state* state);
-            void next_${name}(${name}_state* state);           
+            void init_$name(${name}_state* state);
+            void next_$name(${name}_state* state);           
         """.trimIndent()
         writeHeader(folder, contract.name, content)
     }
@@ -161,16 +179,16 @@ object CCodeUtils {
             }
 
         val content = """
-            #include "${name}.h"
+            #include "$name.h"
             
-            void init_${name}(${name}_state* state) {
+            void init_$name(${name}_state* state) {
                 ${contract.states.joinToString("\n") { "state->$it = ${!it.startsWith("init")};" }}
                 state->_error_= false;
                 state->_final_= false;
                 state->_assume_= false;
             };
 
-            void next_${name}(${name}_state *state) {
+            void next_$name(${name}_state *state) {
                 bool ALL_PRE_CONDITIONS_VIOLATED = true;
                 bool ALL_POST_CONDITIONS_VIOLATED = true;
                 bool EXISTS_APPLICABLE_CONTRACT = false;
@@ -195,7 +213,7 @@ object CCodeUtils {
                 
                 }
     """.trimIndent()
-        //${contract.states.joinToString("\n") { s -> "state->$s=next_$s;" }}
+        // ${contract.states.joinToString("\n") { s -> "state->$s=next_$s;" }}
         writeCode(folder, contract.name, content)
     }
 
@@ -231,7 +249,7 @@ object CCodeUtils {
                         ${
                 contract.variableMap.joinToString("") { (cv, sv) ->
                     val n = applySubst(sv)
-                    "__cstate.$cv = __state.${n};"
+                    "__cstate.$cv = __state.$n;"
                 }
             }
                         next_${contract.contract.name}(&__cstate);
@@ -265,7 +283,7 @@ object CCodeUtils {
 
 private fun Pair<String, List<CATransition>>.transitionAssignment(): String = buildString {
     val (state, inc) = this@transitionAssignment
-    //append("bool next_$state = ")
+    // append("bool next_$state = ")
     append("state->$state = ")
     inc.joinTo(this, " | ") {
         "state->${it.from} & pre_${it.name} & post_${it.name}"

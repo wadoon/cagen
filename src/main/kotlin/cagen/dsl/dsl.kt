@@ -1,3 +1,21 @@
+/* *****************************************************************
+ * This file belongs to cagen (https://github.com/wadoon/cagen).
+ * SPDX-License-Header: GPL-3.0-or-later
+ * 
+ * This program isType free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program isType distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a clone of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * *****************************************************************/
 package cagen.dsl
 
 import cagen.*
@@ -35,9 +53,7 @@ class ModelLevel(val model: Model) {
         var code: String? = "",
         var contracts: MutableList<UseContract> = arrayListOf()
     ) : SignatureLevel {
-        fun build(): System {
-            return System(name, signature, connections, code, contracts)
-        }
+        fun build(): System = System(name, signature, connections, code, contracts)
 
         fun connect(a: IOPort, b: IOPort) {
             connections.add(a to b)
@@ -108,7 +124,6 @@ interface SignatureLevel {
     fun type(name: String) = BuiltInType(name).also { require(name in KNOWN_BUILT_IN_TYPES) }
 }
 
-
 data class Var(val sigVariable: Variable, val smvVariable: SVariable) {
     val smv get() = smvVariable
 
@@ -167,5 +182,3 @@ infix fun Int.lte(i: SMVExpr): SMVExpr = SIntegerLiteral(toBigInteger()) le i
 infix fun Int.gte(i: SMVExpr): SMVExpr = SIntegerLiteral(toBigInteger()) ge i
 infix fun Int.gt(i: SMVExpr): SMVExpr = SIntegerLiteral(toBigInteger()) gt i
 infix fun Int.lt(i: SMVExpr): SMVExpr = SIntegerLiteral(toBigInteger()) lt i
-
-

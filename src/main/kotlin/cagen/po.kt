@@ -1,3 +1,21 @@
+/* *****************************************************************
+ * This file belongs to cagen (https://github.com/wadoon/cagen).
+ * SPDX-License-Header: GPL-3.0-or-later
+ * 
+ * This program isType free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program isType distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a clone of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * *****************************************************************/
 package cagen
 
 import cagen.code.CCodeUtilsSimplified
@@ -11,22 +29,19 @@ import kotlin.io.path.bufferedWriter
 import kotlin.io.path.div
 import kotlin.io.path.writeText
 
-
 abstract class ProofObligation(val name: String) {
     abstract fun createFiles(folder: Path): List<POTask>
 }
 
-
 /**
  * Verify the implementation against a contract (inv or contract automata)
  * */
-class ImplPOMonitor(val model: Model, val system: System, val contract: UseContract) :
-    ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}") {
+class ImplPOMonitor(val model: Model, val system: System, val contract: UseContract) : ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}") {
     override fun createFiles(folder: Path): List<POTask> {
         val outputFolder = folder / name
         Files.createDirectories(outputFolder)
 
-        CCodeUtils.writeGlobals(folder, model.globalDefines, model.globalCode?:"")
+        CCodeUtils.writeGlobals(folder, model.globalDefines, model.globalCode ?: "")
         CCodeUtils.writeContractAutomata(contract.contract, outputFolder)
         CCodeUtils.writeSystemCode(system, outputFolder)
         CCodeUtils.writeGlueCode(system, contract, outputFolder / "$name.c")
@@ -39,8 +54,7 @@ class ImplPOMonitor(val model: Model, val system: System, val contract: UseContr
     }
 }
 
-class ImplPOMonitorSimplified(val model: Model, val system: System, val contract: UseContract) :
-    ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}_simple") {
+class ImplPOMonitorSimplified(val model: Model, val system: System, val contract: UseContract) : ProofObligation("PO_${system.name}_fulfills_${contract.contract.name}_simple") {
     override fun createFiles(folder: Path): List<POTask> {
         val outputFile = folder / "$name.c"
         Files.createDirectories(outputFile.parent)
@@ -61,9 +75,7 @@ class ImplPOMonitorSimplified(val model: Model, val system: System, val contract
 
 data class POTask(val taskName: String = "", val command: String = "")
 
-
-class ValidityPO(val model: Model, val system: System, val contract: UseContract) :
-    ProofObligation("PO_${system.name}_composition_refine") {
+class ValidityPO(val model: Model, val system: System, val contract: UseContract) : ProofObligation("PO_${system.name}_composition_refine") {
     override fun createFiles(folder: Path): List<POTask> {
         val contracts = listOf(contract.contract) +
                 system.signature.instances.map { (it.type as SystemType).system.contracts.first().contract }
@@ -71,9 +83,9 @@ class ValidityPO(val model: Model, val system: System, val contract: UseContract
         val filename = folder / "$name.smv"
 
         filename.writeText(
-            SmvUtils.toSmv(model, system, contract)
-                    + "\n----\n" + SmvUtils.toSmv(model, contract.contract) + "\n----\n"
-                    + "\n----\n" + createHistoryModules(contracts)
+            SmvUtils.toSmv(model, system, contract) +
+                    "\n----\n" + SmvUtils.toSmv(model, contract.contract) + "\n----\n" +
+                    "\n----\n" + createHistoryModules(contracts)
         )
 
         filename.parent.resolve("ic3.xmv").writeText(
@@ -93,9 +105,7 @@ class ValidityPO(val model: Model, val system: System, val contract: UseContract
 
         return listOf(POTask(name, "nuXmv -source ic3.xmv ${filename.fileName}"))
     }
-
 }
-
 
 fun createHistoryModules(vararg seq: Contract): String = createHistoryModules(seq.toList())
 fun createHistoryModules(seq: Iterable<Contract>): String = buildString {
@@ -112,7 +122,6 @@ fun createHistoryModules(seq: Iterable<Contract>): String = buildString {
     }
 }
 
-
 private fun createHistoryModule(depth: Int, type: Type): String {
     require(depth > 0) { "History length should be positive." }
 
@@ -121,7 +130,7 @@ private fun createHistoryModule(depth: Int, type: Type): String {
     }
 
     val assigns = (1..depth).joinToString("\n") {
-        "init(_${it}) := 0sd32_0;\nnext(_${it}) := _${it - 1};"
+        "init(_$it) := 0sd32_0;\nnext(_$it) := _${it - 1};"
     }
 
     return """
@@ -133,9 +142,7 @@ private fun createHistoryModule(depth: Int, type: Type): String {
         """.trimIndent()
 }
 
-
-class ContractRefinementPO(val model: Model, val contract: Contract, val refined: UseContract) :
-    ProofObligation("PO_${contract.name}_refines_${refined.contract.name}") {
+class ContractRefinementPO(val model: Model, val contract: Contract, val refined: UseContract) : ProofObligation("PO_${contract.name}_refines_${refined.contract.name}") {
     override fun createFiles(folder: Path): List<POTask> {
         val sub = contract.signature.all
         for (variable in refined.contract.signature.all) {
@@ -152,8 +159,8 @@ class ContractRefinementPO(val model: Model, val contract: Contract, val refined
             SmvUtils.refinement(
                 contract,
                 refined
-            ) + "\n----\n" + SmvUtils.toSmv(model, contract) + "\n----\n"
-                    + SmvUtils.toSmv(model, refined.contract) + "\n----\n" + createHistoryModules(
+            ) + "\n----\n" + SmvUtils.toSmv(model, contract) + "\n----\n" +
+                    SmvUtils.toSmv(model, refined.contract) + "\n----\n" + createHistoryModules(
                 contract,
                 refined.contract
             )
@@ -180,7 +187,6 @@ class ContractRefinementPO(val model: Model, val contract: Contract, val refined
 
 private infix fun String.notin(map: List<Pair<String, IOPort>>): Boolean = map.find { it.first == this } == null
 
-
 fun createProofObligations(model: Model): List<ProofObligation> {
     val obligations = mutableListOf<ProofObligation>()
     model.contracts.forEach { c ->
@@ -190,11 +196,12 @@ fun createProofObligations(model: Model): List<ProofObligation> {
     }
 
     for (c in model.systems) {
-        if (c.code != null) c.contracts.forEach {
+        if (c.code != null) {
+            c.contracts.forEach {
             obligations.add(ImplPOMonitor(model, c, it))
             obligations.add(ImplPOMonitorSimplified(model, c, it))
         }
-        else {
+        } else {
             c.contracts.forEach {
                 obligations.add(ValidityPO(model, c, it))
             }

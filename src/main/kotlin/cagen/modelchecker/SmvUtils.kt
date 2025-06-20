@@ -1,3 +1,21 @@
+/* *****************************************************************
+ * This file belongs to cagen (https://github.com/wadoon/cagen).
+ * SPDX-License-Header: GPL-3.0-or-later
+ * 
+ * This program isType free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program isType distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a clone of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * *****************************************************************/
 package cagen.modelchecker
 
 import cagen.*
@@ -27,7 +45,6 @@ val Type.asSmvType: String
 
         else -> error("unexpected type")
     }
-
 
 object SmvUtils {
     fun toSmv(model: Model, contract: Contract): String {
@@ -90,15 +107,14 @@ object SmvUtils {
             val (name, depth) = history
             val type = contract.signature.get(name)!!.type.name
             val defines = (0..depth).joinToString("\n") {
-                "h_${name}_${it} := h_${name}._${it};"
+                "h_${name}_$it := h_$name._$it;"
             }
             """
-            VAR h_${name} : History_${type}_$depth($name);
+            VAR h_$name : History_${type}_$depth($name);
             DEFINE
             $defines
             """.trimIndent()
         }
-
 
     fun inv_module(name: String, signature: Signature, pre: String, post: String, model: Model) = """
     ${moduleHead(name, signature, model.globalDefines)}
@@ -110,7 +126,7 @@ object SmvUtils {
     """.trimIndent()
 
     fun moduleHead(name: String, signature: Signature, globalDefines: MutableList<Variable>) = """
-        MODULE ${name}(
+        MODULE $name(
         -- INPUTS
         ${signature.inputs.joinToString(", ") { it.name }.comma()}
         -- OUTPUTS
@@ -135,10 +151,11 @@ object SmvUtils {
             val ioPort = refined.variableMap.find {
                 it.first == v.name
             }
-            return if (ioPort != null)
+            return if (ioPort != null) {
                 "sub__${ioPort.second.portName}"
-            else
+            } else {
                 "parent__${v.name}"
+            }
         }
 
         val bot = (contract.signature.inputs + contract.signature.outputs)
@@ -155,7 +172,7 @@ object SmvUtils {
         return """
 MODULE main 
 IVAR 
-${inputs}
+$inputs
 
 VAR
   parent : ${refined.contract.name}(
@@ -185,7 +202,6 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
             .associate { it.name to it.type.asSmvType }
             .toList()
             .joinToString("\n") { "    self_${it.first} : ${it.second};" }
-
 
         val contracts = mutableSetOf<Contract>()
 
@@ -220,8 +236,10 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
                     inputvars.add(it.copy(name = "${inst.name}_${it.name}"))
                 }
 
-                val params = (useContract.contract.signature.inputs
-                        + useContract.contract.signature.outputs).joinToString {
+                val params = (
+                    useContract.contract.signature.inputs +
+                        useContract.contract.signature.outputs
+                ).joinToString {
                     applySubst(useContract.variableMap, it, inst.name)
                 }
 
@@ -235,7 +253,8 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
             append(
                 system.connections.joinToString("\n&", "", ";") {
                     "${it.first.variable.name}_${it.first.portName} =${it.second.variable.name}_${it.second.portName}"
-                })
+                }
+            )
 
             system.signature.instances.forEach { inst ->
                 val sys = (inst.type as SystemType).system
@@ -249,10 +268,9 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
                     .ifEmpty { "TRUE" }
                 // LTLSPEC G (connections & contract._assume_ )
                 //        -> G ttc._assume_;
-                append("\nLTLSPEC G (connections & contract._assume_ & $upstream) -> G(${downstream}._assume_)")
+                append("\nLTLSPEC G (connections & contract._assume_ & $upstream) -> G($downstream._assume_)")
             }
             append("\nLTLSPEC G (connections & ${system.signature.instances.joinToString(" & ") { "!${it.name}._error_ & !${it.name}._assume_" }}) -> G(!contract._error_)")
-
 
             contracts.forEach {
                 append("\n")
@@ -273,10 +291,6 @@ INVARSPEC sub.GUARANTEE -> parent.GUARANTEE;
     }
 }
 
-fun SMVExpr.toSMVExpr() : String {
-    return cagen.expr.SMVPrinter.toString(this.expand())
-}
-
-
+fun SMVExpr.toSMVExpr(): String = cagen.expr.SMVPrinter.toString(this.expand())
 
 fun String.comma(): String = if (isBlank()) this else "$this,"

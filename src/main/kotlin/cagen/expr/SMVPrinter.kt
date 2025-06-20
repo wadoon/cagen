@@ -1,3 +1,21 @@
+/* *****************************************************************
+ * This file belongs to cagen (https://github.com/wadoon/cagen).
+ * SPDX-License-Header: GPL-3.0-or-later
+ * 
+ * This program isType free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program isType distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a clone of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * *****************************************************************/
 package cagen.expr
 
 import java.io.*
@@ -7,10 +25,7 @@ import kotlin.math.max
 class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
     val sort = true
 
-    override fun visit(top: SMVAst) {
-        throw IllegalArgumentException("not implemented for $top")
-    }
-
+    override fun visit(top: SMVAst): Unit = throw IllegalArgumentException("not implemented for $top")
 
     override fun visit(be: SBinaryExpression) {
         val pleft = precedence(be.left)
@@ -33,12 +48,14 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
             return expr.operator.precedence()
         }
 
-        return if (expr is SLiteral || expr is SVariable
-            || expr is SFunction
+        return if (expr is SLiteral ||
+            expr is SVariable ||
+            expr is SFunction
         ) {
             -1
-        } else 1000
-
+        } else {
+            1000
+        }
     }
 
     override fun visit(ue: SUnaryExpression) {
@@ -119,7 +136,6 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
         }
     }
 
-
     private fun printDefinition(assignments: List<SAssignment>) {
         stream.printf("DEFINE").increaseIndent()
 
@@ -160,8 +176,9 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
         stream.print('(')
         func.arguments.forEachIndexed { i, e ->
             e.accept(this)
-            if (i + 1 < func.arguments.size)
+            if (i + 1 < func.arguments.size) {
                 stream.print(", ")
+            }
         }
         stream.print(')')
     }
@@ -208,8 +225,11 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
 
     private fun printVariables(type: String, v: List<SVariable>) {
         val vars =
-            if (sort) v.sorted()
-            else v
+            if (sort) {
+                v.sorted()
+            } else {
+                v
+            }
 
         if (vars.isNotEmpty()) {
             stream.print(type).increaseIndent()
@@ -225,7 +245,6 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
             stream.decreaseIndent().nl().print("-- end of $type").nl()
         }
     }
-
 
     override fun visit(v: SVariable) = printQuoted(v.name)
 
@@ -244,7 +263,6 @@ class SMVPrinter(val stream: CodeWriter = CodeWriter()) : SMVAstVisitor<Unit> {
             val rk = RESERVED_KEYWORDS.joinToString("|", "(", ")")
             "(?<![a-zA-Z\$_])($rk)(?![a-zA-Z\$_])".toRegex()
         }
-
 
         fun quoted(name: String): String {
             /*return regex.replace(name) {
@@ -306,9 +324,7 @@ open class CodeWriter(val stream: Writer = StringWriter()) : Appendable by strea
         return this
     }
 
-    open fun keyword(keyword: String): CodeWriter {
-        return printf(if (uppercaseKeywords) keyword.uppercase(Locale.getDefault()) else keyword.lowercase(Locale.getDefault()))
-    }
+    open fun keyword(keyword: String): CodeWriter = printf(if (uppercaseKeywords) keyword.uppercase(Locale.getDefault()) else keyword.lowercase(Locale.getDefault()))
 
     fun nl(): CodeWriter {
         write("\n")
@@ -324,9 +340,7 @@ open class CodeWriter(val stream: Writer = StringWriter()) : Appendable by strea
         return this
     }
 
-    fun printf(fmt: String, vararg args: Any): CodeWriter {
-        return write(String.format(fmt, *args))
-    }
+    fun printf(fmt: String, vararg args: Any): CodeWriter = write(String.format(fmt, *args))
 
     fun block(text: String = "", nl: Boolean = false, function: CodeWriter.() -> Unit): CodeWriter {
         printf(text)
@@ -337,7 +351,6 @@ open class CodeWriter(val stream: Writer = StringWriter()) : Appendable by strea
         if (nl) nl()
         return this
     }
-
 
     fun appendReformat(text: String): CodeWriter {
         text.splitToSequence('\n').forEach { nl().printf(it) }

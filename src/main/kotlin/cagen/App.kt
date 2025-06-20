@@ -1,3 +1,21 @@
+/* *****************************************************************
+ * This file belongs to cagen (https://github.com/wadoon/cagen).
+ * SPDX-License-Header: GPL-3.0-or-later
+ * 
+ * This program isType free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program isType distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a clone of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * *****************************************************************/
 @file:Suppress("unused", "MemberVisibilityCanBePrivate")
 
 package cagen
@@ -46,8 +64,9 @@ class AppContext(verbose: Boolean, var version: String? = null, var variants: Li
                     model.findVariant(it)
                         ?: error("Could not find variant $it. Check your `variants` definition in the given file")
                 }
-        if (vv.isNotEmpty())
+        if (vv.isNotEmpty()) {
             model.activateVersion(vv)
+        }
         return model
     }
 }
@@ -58,7 +77,6 @@ class Tool : CliktCommand() {
     val verbose by option().flag("--no-verbose")
     val version by option("--version")
     val variants by option("--variant").multiple()
-
 
     override fun run() {
         currentContext.obj = AppContext(verbose, version, variants)
@@ -76,13 +94,15 @@ class DotCommand : CliktCommand() {
     val context by requireObject<AppContext>()
 
     override fun run() {
-        if (watch) watchMode()
-        else {
+        if (watch) {
+            watchMode()
+        } else {
             val dot = getDot()
-            if (tempFile == "-")
+            if (tempFile == "-") {
                 println(dot)
-            else
+            } else {
                 File(tempFile).writeText(dot)
+            }
         }
     }
 
@@ -134,20 +154,23 @@ class TikzCommand : CliktCommand() {
 
     override fun run() {
         val (sys, contracts) = context.load(inputFile)
-        val s = if (!fragment)
+        val s = if (!fragment) {
             TikzPrinter.asString { tikz_standalone(sys + contracts) }
-        else
+        } else {
             TikzPrinter.asString { tikz(sys + contracts) }
-        if (output == "-")
+        }
+        if (output == "-") {
             println(s)
-        else
+        } else {
             File(output).writeText(s)
+        }
     }
 }
 
 class VVSlice : CliktCommand(name = "vvslice") {
     override fun help(context: Context) = """Slices a given system model given by the version and variants information. 
-    |Use with an empty version or variants results into a pretty printed and identical system.""".trimMargin()
+    |Use with an empty version or variants results into a pretty printed and identical system.
+""".trimMargin()
 
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val output by option("-o", OUTPUT).default("-")
@@ -165,7 +188,6 @@ class VVSlice : CliktCommand(name = "vvslice") {
     }
 }
 
-
 class ConstructCA : CliktCommand(name = "construct") {
     val inputFile by argument("SYSTEM").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val systemName by argument()
@@ -180,7 +202,6 @@ class ConstructCA : CliktCommand(name = "construct") {
         print(PrettyPrinter(PrintWriter(System.out)).pp(uc.contract))
     }
 }
-
 
 class ExtractCode : CliktCommand() {
     val outputFolder by option("-o", OUTPUT).file().default(File("output"))
@@ -227,7 +248,6 @@ class Verify : CliktCommand() {
         )
     }
 }
-
 
 fun main(args: Array<String>) = Tool()
     .subcommands(ExtractCode(), DotCommand(), TikzCommand(), Verify(), ConstructCA(), VVSlice())
