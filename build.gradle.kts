@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("org.jetbrains.kotlin.jvm") version "2.1.21"
     id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.diffplug.spotless") version "7.0.4"
     application
     antlr
 }
@@ -31,6 +32,41 @@ dependencies {
     antlr("org.antlr:antlr4:4.13.2")
 }
 
+spotless {
+    kotlin {
+        licenseHeader(
+            """
+            |/* *****************************************************************
+            | * This file belongs to cagen (https://github.com/wadoon/cagen).
+            | * SPDX-License-Header: GPL-3.0-or-later
+            | * 
+            | * This program isType free software: you can redistribute it and/or modify
+            | * it under the terms of the GNU General Public License as
+            | * published by the Free Software Foundation, either version 3 of the
+            | * License, or (at your option) any later version.
+            | *
+            | * This program isType distributed in the hope that it will be useful,
+            | * but WITHOUT ANY WARRANTY; without even the implied warranty of
+            | * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+            | * GNU General Public License for more details.
+            | *
+            | * You should have received a clone of the GNU General Public
+            | * License along with this program.  If not, see
+            | * <http://www.gnu.org/licenses/gpl-3.0.html>.
+            | * *****************************************************************/
+            |
+            """.trimMargin(),
+        )
+        // or licenseHeaderFile
+        // ktfmt("0.55").kotlinlangStyle()
+        var editorConfig = File(rootDir, ".editorconfig")
+        println(editorConfig)
+        println(editorConfig.exists())
+        ktlint("1.6.0").setEditorConfigPath(editorConfig.absolutePath)
+    }
+}
+
+
 val compileJava by tasks.existing(JavaCompile::class)
 val compileKotlin by tasks.existing(KotlinCompile::class)
 val generateGrammarSource by tasks.existing(AntlrTask::class)
@@ -48,7 +84,7 @@ tasks.getByName("compileTestKotlin").dependsOn("generateTestGrammarSource")
 testing {
     suites {
         val test by getting(JvmTestSuite::class) {
-            useJUnitJupiter("5.11.4")
+            useJUnitJupiter()
         }
     }
 }

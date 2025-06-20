@@ -20,10 +20,10 @@
 
 - in: "0sd32_0 <= mioDistance                    &            mioDistance <= 0sd32_1024                     & -0sd32_1024 <= mioVelocity                    &                mioVelocity <= 0sd32_1024"
   c: "((((0 <= mioDistance) && (mioDistance <= 1024)) && (-1024 <= mioVelocity)) && (mioVelocity <= 1024))"
-  smv: "(0sd32_0 <= mioDistance & mioDistance <= 0sd32_1024 & -0sd32_1024 <= mioVelocity & mioVelocity <= 0sd32_1024)"
+  smv: "((((0sd32_0 <= mioDistance) & (mioDistance <= 0sd32_1024)) & (-0sd32_1024 <= mioVelocity)) & (mioVelocity <= 0sd32_1024))"
 
 - in: "0sd32_0 <= mioDistance & 0sd32_0 <= egoVelocity        & 0sd32_0 <= mioDistance & mioDistance <= 0sd32_1024 & -0sd32_1024 <= mioVelocity & mioVelocity <= 0sd32_1024"
-  smv: "(0sd32_0 <= mioDistance & 0sd32_0 <= egoVelocity & 0sd32_0 <= mioDistance & mioDistance <= 0sd32_1024 & -0sd32_1024 <= mioVelocity & mioVelocity <= 0sd32_1024)"
+  smv: "((((((0sd32_0 <= mioDistance) & (0sd32_0 <= egoVelocity)) & (0sd32_0 <= mioDistance)) & (mioDistance <= 0sd32_1024)) & (-0sd32_1024 <= mioVelocity)) & (mioVelocity <= 0sd32_1024))"
   c: "((((((0 <= mioDistance) && (0 <= egoVelocity)) && (0 <= mioDistance)) && (mioDistance <= 1024)) && (-1024 <= mioVelocity)) && (mioVelocity <= 1024))"
 
 - in: "0sd32_1"
@@ -55,11 +55,19 @@
 
 - in: "abs(TTC) < FCWtime & TTC >= 0sd32_0"
   c: "((abs(TTC) < FCWtime) && (TTC >= 0))"
-  smv: "abs(TTC) < FCWtime & TTC >= 0sd32_0"
+  smv: |
+    ((case (TTC < 0sd32_0) : -TTC; 
+                      TRUE : TTC; 
+    esac < FCWtime) & (TTC >= 0sd32_0))
+  
 
 - in: "abs(TTC) >= (0sd32_2 * FCWtime)"
   c: "(abs(TTC) >= (2 * FCWtime))"
-  smv: "abs(TTC) >= 0sd32_2 * FCWtime"
+  smv: | 
+    (case
+    (TTC < 0sd32_0): -TTC;
+    TRUE: TTC;
+    esac >= (0sd32_2 * FCWtime))
 
 - in: "collision = ((mioDistance - headawayOffset) < 0sd32_2)"
   c: "(collision == ((mioDistance - headawayOffset) < 2))"

@@ -15,8 +15,8 @@ class SmvFuncExpanderTest {
     @Test
     fun expand() {
         val expr = ParserFacade.parseExpr("1+abs(-x)")
-        val expected  = ParserFacade.parseExpr("1+(case -x < 0 : --x; TRUE: -x; esac)")
+        val expected  = ParserFacade.parseExpr("1+(case -x < 0sd32_0 : --x; TRUE: -x; esac)")
         val expanded = expr.expand()
-        assertEquals(expected, expanded)
+        assertEquals(expected.toSMVExpr(), expanded.toSMVExpr())
     }
 }
