@@ -8,6 +8,10 @@ plugins {
     antlr
 }
 
+description = "Proof Obligation Generator and helper tools for Contract Automata."
+group = "io.github.wadoon.cagen"
+version = "1.0"
+
 repositories {
     mavenCentral()
 }
@@ -58,12 +62,9 @@ spotless {
             """.trimMargin(),
         )
         var editorConfig = File(rootDir, ".editorconfig")
-        //println(editorConfig)
-        //println(editorConfig.exists())
         ktlint("1.6.0").setEditorConfigPath(editorConfig.absolutePath)
     }
 }
-
 
 val compileJava by tasks.existing(JavaCompile::class)
 val compileKotlin by tasks.existing(KotlinCompile::class)
@@ -81,7 +82,7 @@ tasks.getByName("compileTestKotlin").dependsOn("generateTestGrammarSource")
 
 testing {
     suites {
-        val test by getting(JvmTestSuite::class) {
+        getting(JvmTestSuite::class) {
             useJUnitJupiter()
         }
     }

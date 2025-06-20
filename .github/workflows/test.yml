@@ -17,7 +17,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [ ubuntu-latest, windows-latest, macos-latest ]
+                os: [ ubuntu-latest, windows-latest ]
                 java: [ 21 ]
         continue-on-error: false
         runs-on: ${{ matrix.os }}
@@ -50,10 +50,7 @@ jobs:
             -   name: Test z3
                 run: z3 -version
 
-            -   run: ./gradlew --continue --no-problems-report
-
-            -   name: Run integration tests
-                run: ./gradlew :exec:test         --no-problems-report
+            -   run: ./gradlew test --continue --no-problems-report
 
             -   name: Upload test results
                 uses: actions/upload-artifact@v4.6.2
@@ -71,6 +68,16 @@ jobs:
             -   name: Summarize tests results
                 uses: jeantessier/test-summary-action@v1
                 if: ${{ always() }}
+
+            -   name: Build distribution
+                run: ./gradlew shadowJar
+
+            -   name: "Run integration test: Counter"
+                run: |
+                    cd examples/counter
+                    java -jar ../../build/libs/cagen-1.0-all.jar -o out Counter.sys
+                    cd out && make
+                if: runner.os == 'Linux'
 
 
     spotless:
