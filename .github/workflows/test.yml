@@ -72,13 +72,15 @@ jobs:
             -   name: Build distribution
                 run: ./gradlew shadowJar
 
+    integration-test-counter:
+        runs-on: ubuntu-latest
+        steps:
             -   name: "Run integration test: Counter"
                 run: |
                     cd examples/counter
                     java -jar ../../build/libs/cagen-1.0-all.jar -o out Counter.sys
-                    cd out && make
-                if: runner.os == 'Linux'
-
+                    cd out 
+                    make
 
     spotless:
         runs-on: ubuntu-latest
