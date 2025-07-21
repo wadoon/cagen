@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("org.jetbrains.kotlin.jvm") version "2.2.0"
     id("com.github.johnrengelman.shadow") version "8.1.1"
-    id("com.diffplug.spotless") version "7.1.0"
+    id("com.diffplug.spotless") version "7.2.0"
     application
     antlr
 }
