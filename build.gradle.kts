@@ -23,14 +23,14 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.5")
 
     // graph drawing
-    implementation("org.eclipse.elk:org.eclipse.elk.core:0.10.0")
-    implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.10.0")
-    implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.10.0")
+    implementation("org.eclipse.elk:org.eclipse.elk.core:0.11.0")
+    implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.11.0")
+    implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.11.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.13.4")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.13.4")
-    testImplementation("org.assertj:assertj-core:3.27.4")
+    testImplementation("org.assertj:assertj-core:3.27.5")
 
     implementation("org.antlr:antlr4-runtime:4.13.2")
     antlr("org.antlr:antlr4:4.13.2")
