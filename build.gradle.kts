@@ -27,9 +27,9 @@ dependencies {
     implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.11.0")
     implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.11.0")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.13.4")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.13.4")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:6.0.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:6.0.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:6.0.0")
     testImplementation("org.assertj:assertj-core:3.27.6")
 
     implementation("org.antlr:antlr4-runtime:4.13.2")
