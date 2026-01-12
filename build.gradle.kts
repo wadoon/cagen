@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
-    id("com.gradleup.shadow") version "9.3.0"
+    id("com.gradleup.shadow") version "9.3.1"
     id("com.diffplug.spotless") version "8.1.0"
     application
     antlr
@@ -27,9 +27,9 @@ dependencies {
     implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.11.0")
     implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.11.0")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:6.0.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:6.0.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:6.0.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:6.0.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:6.0.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:6.0.2")
     testImplementation("org.assertj:assertj-core:3.27.6")
 
     implementation("org.antlr:antlr4-runtime:4.13.2")
