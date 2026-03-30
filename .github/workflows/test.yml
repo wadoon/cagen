@@ -33,7 +33,7 @@ jobs:
                     cache: 'gradle'
 
             -   name: Set up Gradle
-                uses: gradle/actions/setup-gradle@v5
+                uses: gradle/actions/setup-gradle@v6
 
             -   run: ./gradlew testClasses
             -   run: ./gradlew testClasses
@@ -63,7 +63,7 @@ jobs:
                         !**/jacocoTestReport.xml
 
             -   name: Upload coverage reports to Codecov
-                uses: codecov/codecov-action@v5
+                uses: codecov/codecov-action@v6
 
             -   name: Summarize tests results
                 uses: jeantessier/test-summary-action@v1
@@ -93,6 +93,6 @@ jobs:
                     distribution: 'temurin'
 
             -   name: Set up Gradle
-                uses: gradle/actions/setup-gradle@v5
+                uses: gradle/actions/setup-gradle@v6
 
             -   run: ./gradlew spotlessCheck
