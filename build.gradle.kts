@@ -1,9 +1,9 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.3.21"
-    id("com.gradleup.shadow") version "9.4.1"
-    id("com.diffplug.spotless") version "8.5.1"
+    id("org.jetbrains.kotlin.jvm") version "2.4.0"
+    id("com.gradleup.shadow") version "9.4.2"
+    id("com.diffplug.spotless") version "8.6.0"
     application
     antlr
 }
