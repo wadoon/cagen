@@ -21,7 +21,7 @@ dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("com.github.ajalt.clikt:clikt:5.1.0")
-    implementation("org.yaml:snakeyaml:2.6")
+    implementation("org.yaml:snakeyaml:2.7")
 
     // graph drawing
     implementation("org.eclipse.elk:org.eclipse.elk.core:0.12.0")
