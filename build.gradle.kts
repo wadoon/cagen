@@ -2,9 +2,9 @@ import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.4.10"
+    id("org.jetbrains.kotlin.jvm") version "2.4.20"
     id("com.gradleup.shadow") version "9.6.1"
-    id("com.diffplug.spotless") version "8.10.1"
+    id("com.diffplug.spotless") version "8.10.2"
     application
     antlr
 }
