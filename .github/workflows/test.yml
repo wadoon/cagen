@@ -39,7 +39,7 @@ jobs:
             -   run: ./gradlew testClasses
 
             -   name: Setup nuXmv
-                uses: verifaps/setup-nuxmv@v0.1.3
+                uses: verifaps/setup-nuxmv@v0.1.4
 
             -   name: Test nuXmv
                 run: echo "quit" | nuXmv -int | head -n 1
