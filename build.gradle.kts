@@ -24,9 +24,9 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.7")
 
     // graph drawing
-    implementation("org.eclipse.elk:org.eclipse.elk.core:0.12.0")
-    implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.12.0")
-    implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.12.0")
+    implementation("org.eclipse.elk:org.eclipse.elk.core:0.12.1")
+    implementation("org.eclipse.elk:org.eclipse.elk.alg.common:0.12.1")
+    implementation("org.eclipse.elk:org.eclipse.elk.alg.layered:0.12.1")
 
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
